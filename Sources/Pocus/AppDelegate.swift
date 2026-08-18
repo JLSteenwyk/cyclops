@@ -16,6 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     updaterDelegate: nil,
     userDriverDelegate: self
   )
+  private lazy var focusHotKey = GlobalHotKey { [weak self] in
+    self?.handleGlobalFocusShortcut()
+  }
+  private var focusHotKeyErrorDescription: String?
+  private var shortcutDeduplicator = ShortcutDeliveryDeduplicator()
   private var statusItem: NSStatusItem!
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -30,6 +35,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     let menu = NSMenu()
     menu.delegate = self
     statusItem.menu = menu
+
+    do {
+      try focusHotKey.register()
+    } catch {
+      focusHotKeyErrorDescription = error.localizedDescription
+      NSLog("Pocus global shortcut unavailable: %@", error.localizedDescription)
+    }
     rebuildMenu()
 
     focusController.start()
@@ -41,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
 
   func menuWillOpen(_ menu: NSMenu) {
     rebuildMenu()
+  }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    focusHotKey.unregister()
   }
 
   var supportsGentleScheduledUpdateReminders: Bool {
@@ -84,6 +100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
         keyEquivalent: ""
       )
       toggleItem.target = self
+      FocusShortcut.configure(menuItem: toggleItem)
+      toggleItem.toolTip = focusHotKeyErrorDescription
       menu.addItem(toggleItem)
 
       let explanation = NSMenuItem(
@@ -182,6 +200,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
   }
 
   @objc private func toggleFocus() {
+    performShortcutToggle(source: .appKit)
+  }
+
+  private func handleGlobalFocusShortcut() {
+    performShortcutToggle(source: .carbon)
+  }
+
+  private func performShortcutToggle(source: ShortcutDeliveryDeduplicator.Source) {
+    let now = ProcessInfo.processInfo.systemUptime
+    guard shortcutDeduplicator.shouldPerform(source: source, at: now) else { return }
     focusController.togglePaused()
   }
 
