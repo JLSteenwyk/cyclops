@@ -1,12 +1,20 @@
 import AppKit
+@preconcurrency import Sparkle
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
+  @MainActor SPUStandardUserDriverDelegate
+{
   private let accessibility = AccessibilityService()
   private let settings = PocusSettings()
   private lazy var focusController = FocusController(
     accessibility: accessibility,
     settings: settings
+  )
+  private lazy var updaterController = SPUStandardUpdaterController(
+    startingUpdater: true,
+    updaterDelegate: nil,
+    userDriverDelegate: self
   )
   private var statusItem: NSStatusItem!
 
@@ -33,6 +41,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   func menuWillOpen(_ menu: NSMenu) {
     rebuildMenu()
+  }
+
+  var supportsGentleScheduledUpdateReminders: Bool {
+    true
+  }
+
+  func standardUserDriverWillHandleShowingUpdate(
+    _ handleShowingUpdate: Bool,
+    forUpdate update: SUAppcastItem,
+    state: SPUUserUpdateState
+  ) {
+    guard handleShowingUpdate else { return }
+    NSApp.setActivationPolicy(.regular)
+    if !state.userInitiated {
+      NSApp.dockTile.badgeLabel = "1"
+    }
+  }
+
+  func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+    NSApp.dockTile.badgeLabel = nil
+  }
+
+  func standardUserDriverWillFinishUpdateSession() {
+    NSApp.dockTile.badgeLabel = nil
+    NSApp.setActivationPolicy(.accessory)
   }
 
   private func rebuildMenu() {
@@ -82,6 +115,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     menu.addItem(strengthMenuItem())
     menu.addItem(paddingMenuItem())
     menu.addItem(.separator())
+
+    let updateItem = NSMenuItem(
+      title: "Check for Updates…",
+      action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+      keyEquivalent: ""
+    )
+    updateItem.target = updaterController
+    updateItem.isEnabled = updaterController.updater.canCheckForUpdates
+    menu.addItem(updateItem)
 
     let settingsItem = NSMenuItem(
       title: "Open Accessibility Settings…",
