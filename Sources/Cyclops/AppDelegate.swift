@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
   @MainActor SPUStandardUserDriverDelegate
 {
   private let accessibility = AccessibilityService()
-  private let settings = PocusSettings()
+  private let settings = CyclopsSettings()
   private lazy var focusController = FocusController(
     accessibility: accessibility,
     settings: settings
@@ -27,10 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     statusItem.button?.image = NSImage(
       systemSymbolName: "viewfinder",
-      accessibilityDescription: "Pocus"
+      accessibilityDescription: "Cyclops"
     )
     statusItem.button?.appearsDisabled = false
-    statusItem.button?.toolTip = "Pocus — focus on the selected window"
+    statusItem.button?.toolTip = "Cyclops — focus on the selected window"
 
     let menu = NSMenu()
     menu.delegate = self
@@ -40,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
       try focusHotKey.register()
     } catch {
       focusHotKeyErrorDescription = error.localizedDescription
-      NSLog("Pocus global shortcut unavailable: %@", error.localizedDescription)
+      NSLog("Cyclops global shortcut unavailable: %@", error.localizedDescription)
     }
     rebuildMenu()
 
@@ -88,7 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     guard let menu = statusItem?.menu else { return }
     menu.removeAllItems()
 
-    let title = NSMenuItem(title: "Pocus", action: nil, keyEquivalent: "")
+    let title = NSMenuItem(title: "Cyclops", action: nil, keyEquivalent: "")
     title.isEnabled = false
     menu.addItem(title)
 
@@ -163,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     menu.addItem(settingsItem)
 
     let quitItem = NSMenuItem(
-      title: "Quit Pocus",
+      title: "Quit Cyclops",
       action: #selector(NSApplication.terminate(_:)),
       keyEquivalent: "q"
     )

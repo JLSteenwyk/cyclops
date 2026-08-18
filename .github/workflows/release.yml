@@ -82,12 +82,12 @@ jobs:
           CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
         run: |
           keychain_password="$(openssl rand -hex 24)"
-          keychain_path="$RUNNER_TEMP/pocus-signing.keychain-db"
-          printf '%s' "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/pocus-certificate.p12"
+          keychain_path="$RUNNER_TEMP/cyclops-signing.keychain-db"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cyclops-certificate.p12"
           security create-keychain -p "$keychain_password" "$keychain_path"
           security set-keychain-settings -lut 21600 "$keychain_path"
           security unlock-keychain -p "$keychain_password" "$keychain_path"
-          security import "$RUNNER_TEMP/pocus-certificate.p12" \
+          security import "$RUNNER_TEMP/cyclops-certificate.p12" \
             -k "$keychain_path" \
             -P "$CERTIFICATE_PASSWORD" \
             -T /usr/bin/codesign \
@@ -106,7 +106,7 @@ jobs:
           NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           NOTARY_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          xcrun notarytool store-credentials pocus-ci \
+          xcrun notarytool store-credentials cyclops-ci \
             --apple-id "$NOTARY_APPLE_ID" \
             --team-id "$NOTARY_TEAM_ID" \
             --password "$NOTARY_PASSWORD" \
@@ -114,20 +114,20 @@ jobs:
 
       - name: Create signed and notarized release
         env:
-          POCUS_VERSION: ${{ steps.metadata.outputs.version }}
-          POCUS_BUILD_NUMBER: ${{ steps.metadata.outputs.build }}
-          POCUS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
-          POCUS_EXPECTED_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          POCUS_NOTARY_KEYCHAIN_PROFILE: pocus-ci
-          POCUS_SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          CYCLOPS_VERSION: ${{ steps.metadata.outputs.version }}
+          CYCLOPS_BUILD_NUMBER: ${{ steps.metadata.outputs.build }}
+          CYCLOPS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          CYCLOPS_EXPECTED_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CYCLOPS_NOTARY_KEYCHAIN_PROFILE: cyclops-ci
+          CYCLOPS_SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           UPDATE_FEED_REPOSITORY: ${{ vars.UPDATE_FEED_REPOSITORY }}
         run: |
-          printf '%s' "$POCUS_SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/pocus-sparkle-private-key"
-          chmod 600 "$RUNNER_TEMP/pocus-sparkle-private-key"
-          export POCUS_SPARKLE_PRIVATE_KEY_FILE="$RUNNER_TEMP/pocus-sparkle-private-key"
-          export POCUS_NOTARY_KEYCHAIN="$keychain_path"
-          export POCUS_FEED_URL="https://github.com/$UPDATE_FEED_REPOSITORY/releases/latest/download/appcast.xml"
-          export POCUS_DOWNLOAD_BASE_URL="https://github.com/$UPDATE_FEED_REPOSITORY/releases/download/v$POCUS_VERSION"
+          printf '%s' "$CYCLOPS_SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/cyclops-sparkle-private-key"
+          chmod 600 "$RUNNER_TEMP/cyclops-sparkle-private-key"
+          export CYCLOPS_SPARKLE_PRIVATE_KEY_FILE="$RUNNER_TEMP/cyclops-sparkle-private-key"
+          export CYCLOPS_NOTARY_KEYCHAIN="$keychain_path"
+          export CYCLOPS_FEED_URL="https://github.com/$UPDATE_FEED_REPOSITORY/releases/latest/download/appcast.xml"
+          export CYCLOPS_DOWNLOAD_BASE_URL="https://github.com/$UPDATE_FEED_REPOSITORY/releases/download/v$CYCLOPS_VERSION"
           ./scripts/release.sh
 
       - name: Publish public Sparkle update
@@ -138,13 +138,13 @@ jobs:
           TAG: ${{ steps.metadata.outputs.tag }}
         run: |
           gh release create "$TAG" \
-            "dist/release/Pocus-$VERSION.dmg" \
-            "dist/release/Pocus-$VERSION.dmg.sha256" \
-            "dist/release/Pocus-$VERSION.md" \
+            "dist/release/Cyclops-$VERSION.dmg" \
+            "dist/release/Cyclops-$VERSION.dmg.sha256" \
+            "dist/release/Cyclops-$VERSION.md" \
             "dist/release/appcast.xml" \
             --repo "$UPDATE_FEED_REPOSITORY" \
-            --title "Pocus $VERSION" \
-            --notes-file "dist/release/Pocus-$VERSION.md"
+            --title "Cyclops $VERSION" \
+            --notes-file "dist/release/Cyclops-$VERSION.md"
 
       - name: Publish source repository release
         env:
@@ -153,22 +153,22 @@ jobs:
           TAG: ${{ steps.metadata.outputs.tag }}
         run: |
           gh release create "$TAG" \
-            "dist/release/Pocus-$VERSION.dmg" \
-            "dist/release/Pocus-$VERSION.dmg.sha256" \
+            "dist/release/Cyclops-$VERSION.dmg" \
+            "dist/release/Cyclops-$VERSION.dmg.sha256" \
             "dist/release/appcast.xml" \
             --target "$GITHUB_SHA" \
-            --title "Pocus $VERSION" \
-            --notes-file "dist/release/Pocus-$VERSION.md"
+            --title "Cyclops $VERSION" \
+            --notes-file "dist/release/Cyclops-$VERSION.md"
 
       - name: Upload release evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Pocus-${{ steps.metadata.outputs.version }}-release-evidence
+          name: Cyclops-${{ steps.metadata.outputs.version }}-release-evidence
           path: |
             dist/release/appcast.xml
             dist/release/notarization-log.json
             dist/release/notarization.plist
-            dist/release/Pocus-${{ steps.metadata.outputs.version }}.dmg.sha256
+            dist/release/Cyclops-${{ steps.metadata.outputs.version }}.dmg.sha256
 
       - name: Remove temporary credentials
         if: always()
@@ -176,4 +176,4 @@ jobs:
           if [[ -n "${keychain_path:-}" && -f "$keychain_path" ]]; then
             security delete-keychain "$keychain_path"
           fi
-          rm -f "$RUNNER_TEMP/pocus-certificate.p12" "$RUNNER_TEMP/pocus-sparkle-private-key"
+          rm -f "$RUNNER_TEMP/cyclops-certificate.p12" "$RUNNER_TEMP/cyclops-sparkle-private-key"

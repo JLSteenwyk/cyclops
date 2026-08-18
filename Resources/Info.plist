@@ -5,21 +5,21 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>Pocus</string>
+    <string>Cyclops</string>
     <key>CFBundleExecutable</key>
-    <string>Pocus</string>
+    <string>Cyclops</string>
     <key>CFBundleIdentifier</key>
     <string>com.jlsteenwyk.pocus</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Pocus</string>
+    <string>Cyclops</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.3.0</string>
+    <string>0.4.0</string>
     <key>CFBundleVersion</key>
-    <string>4</string>
+    <string>5</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.productivity</string>
     <key>LSMinimumSystemVersion</key>
@@ -33,7 +33,7 @@
     <key>SUAutomaticallyUpdate</key>
     <false/>
     <key>SUFeedURL</key>
-    <string>https://updates.invalid/pocus/appcast.xml</string>
+    <string>https://updates.invalid/cyclops/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>Zw+zP2ukfQqJu3UHJBr1napUB5VbvoYfMKiWVwz3G44=</string>
     <key>SURequireSignedFeed</key>

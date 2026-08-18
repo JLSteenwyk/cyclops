@@ -3,12 +3,12 @@
 import PackageDescription
 
 let package = Package(
-  name: "Pocus",
+  name: "Cyclops",
   platforms: [
     .macOS(.v13)
   ],
   products: [
-    .executable(name: "Pocus", targets: ["Pocus"])
+    .executable(name: "Cyclops", targets: ["Cyclops"])
   ],
   dependencies: [
     .package(
@@ -18,7 +18,7 @@ let package = Package(
   ],
   targets: [
     .executableTarget(
-      name: "Pocus",
+      name: "Cyclops",
       dependencies: [
         .product(name: "Sparkle", package: "Sparkle")
       ],
@@ -30,8 +30,8 @@ let package = Package(
       ]
     ),
     .testTarget(
-      name: "PocusTests",
-      dependencies: ["Pocus"]
+      name: "CyclopsTests",
+      dependencies: ["Cyclops"]
     ),
   ]
 )

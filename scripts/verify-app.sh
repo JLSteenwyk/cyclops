@@ -3,16 +3,16 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-app_directory="${1:-$project_root/dist/Pocus.app}"
-expected_architectures="${POCUS_EXPECTED_ARCHITECTURES:-}"
-expected_version="${POCUS_EXPECTED_VERSION:-}"
-expected_build_number="${POCUS_EXPECTED_BUILD_NUMBER:-}"
-expected_team_id="${POCUS_EXPECTED_TEAM_ID:-}"
+app_directory="${1:-$project_root/dist/Cyclops.app}"
+expected_architectures="${CYCLOPS_EXPECTED_ARCHITECTURES:-}"
+expected_version="${CYCLOPS_EXPECTED_VERSION:-}"
+expected_build_number="${CYCLOPS_EXPECTED_BUILD_NUMBER:-}"
+expected_team_id="${CYCLOPS_EXPECTED_TEAM_ID:-}"
 info_plist="$app_directory/Contents/Info.plist"
-executable="$app_directory/Contents/MacOS/Pocus"
+executable="$app_directory/Contents/MacOS/Cyclops"
 sparkle_framework="$app_directory/Contents/Frameworks/Sparkle.framework"
-require_hardened_runtime="${POCUS_REQUIRE_HARDENED_RUNTIME:-0}"
-require_production_signing="${POCUS_REQUIRE_PRODUCTION_SIGNING:-0}"
+require_hardened_runtime="${CYCLOPS_REQUIRE_HARDENED_RUNTIME:-0}"
+require_production_signing="${CYCLOPS_REQUIRE_PRODUCTION_SIGNING:-0}"
 
 verify_production_signature() {
   local component="$1"
@@ -107,12 +107,12 @@ if [[ ! -d "$sparkle_framework" ]]; then
 fi
 
 if ! otool -L "$executable" | grep -q '@rpath/Sparkle.framework/Versions/B/Sparkle'; then
-  echo "Pocus is not linked to the embedded Sparkle framework" >&2
+  echo "Cyclops is not linked to the embedded Sparkle framework" >&2
   exit 1
 fi
 
 if ! otool -l "$executable" | grep -A2 LC_RPATH | grep -q '@executable_path/../Frameworks'; then
-  echo "Pocus does not contain the Sparkle runtime search path" >&2
+  echo "Cyclops does not contain the Sparkle runtime search path" >&2
   exit 1
 fi
 
