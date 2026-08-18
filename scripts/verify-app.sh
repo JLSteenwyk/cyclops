@@ -11,6 +11,7 @@ expected_team_id="${CYCLOPS_EXPECTED_TEAM_ID:-}"
 info_plist="$app_directory/Contents/Info.plist"
 executable="$app_directory/Contents/MacOS/Cyclops"
 sparkle_framework="$app_directory/Contents/Frameworks/Sparkle.framework"
+icon_file="$app_directory/Contents/Resources/Cyclops.icns"
 require_hardened_runtime="${CYCLOPS_REQUIRE_HARDENED_RUNTIME:-0}"
 require_production_signing="${CYCLOPS_REQUIRE_PRODUCTION_SIGNING:-0}"
 
@@ -103,6 +104,15 @@ fi
 
 if [[ ! -d "$sparkle_framework" ]]; then
   echo "Sparkle.framework is not embedded" >&2
+  exit 1
+fi
+
+if [[ "$(plutil -extract CFBundleIconFile raw "$info_plist")" != "Cyclops.icns" ]]; then
+  echo "Cyclops.icns is not configured as the app icon" >&2
+  exit 1
+fi
+if [[ ! -f "$icon_file" ]]; then
+  echo "Cyclops.icns is not embedded in the app bundle" >&2
   exit 1
 fi
 

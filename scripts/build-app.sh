@@ -7,6 +7,7 @@ configuration="${1:-release}"
 app_directory="$project_root/dist/Cyclops.app"
 contents_directory="$app_directory/Contents"
 info_plist="$project_root/Resources/Info.plist"
+icon_source="$project_root/Resources/CyclopsAppIcon.png"
 version="${CYCLOPS_VERSION:-$(plutil -extract CFBundleShortVersionString raw "$info_plist")}"
 build_number="${CYCLOPS_BUILD_NUMBER:-$(plutil -extract CFBundleVersion raw "$info_plist")}"
 minimum_macos="$(plutil -extract LSMinimumSystemVersion raw "$info_plist")"
@@ -64,6 +65,10 @@ else
   lipo -create "${binary_paths[@]}" -output "$contents_directory/MacOS/Cyclops"
 fi
 cp "$info_plist" "$contents_directory/Info.plist"
+mkdir -p "$contents_directory/Resources"
+"$project_root/scripts/create-app-icon.sh" \
+  "$icon_source" \
+  "$contents_directory/Resources/Cyclops.icns"
 plutil -replace CFBundleShortVersionString -string "$version" "$contents_directory/Info.plist"
 plutil -replace CFBundleVersion -string "$build_number" "$contents_directory/Info.plist"
 plutil -replace SUFeedURL -string "$feed_url" "$contents_directory/Info.plist"

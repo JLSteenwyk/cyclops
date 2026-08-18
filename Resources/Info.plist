@@ -10,6 +10,8 @@
     <string>Cyclops</string>
     <key>CFBundleIdentifier</key>
     <string>com.jlsteenwyk.pocus</string>
+    <key>CFBundleIconFile</key>
+    <string>Cyclops.icns</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

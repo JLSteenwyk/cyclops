@@ -25,10 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    statusItem.button?.image = NSImage(
-      systemSymbolName: "viewfinder",
-      accessibilityDescription: "Cyclops"
-    )
+    statusItem.button?.image = CyclopsIcon.statusImage()
     statusItem.button?.appearsDisabled = false
     statusItem.button?.toolTip = "Cyclops — focus on the selected window"
 
