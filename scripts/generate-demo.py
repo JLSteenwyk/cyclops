@@ -15,17 +15,22 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 WIDTH = 960
 HEIGHT = 540
 FPS = 15
-DURATION = 10
+DURATION = 12
 FRAME_COUNT = FPS * DURATION
 
-STATUS_MENU_FIRST_OPEN_TIME = 1.25
-PAUSE_TIME = 2.00
-STATUS_MENU_SECOND_OPEN_TIME = 3.05
-RESUME_TIME = 3.80
+INITIAL_WINDOW_END_TIME = 0.80
+STATUS_MENU_FIRST_OPEN_TIME = 1.70
+PAUSE_TIME = 2.70
+PAUSED_CENTER_TIME = 3.30
+STATUS_MENU_SECOND_OPEN_TIME = 4.20
+RESUME_TIME = 5.20
+WINDOW_SELECTION_START_TIME = 5.80
 
-PLAN_SELECTION_TIME = 5.35
-RESEARCH_SELECTION_TIME = 7.35
-WRITE_SELECTION_TIME = 9.55
+PLAN_SELECTION_TIME = 7.00
+PLAN_INTERACTION_END_TIME = 7.80
+RESEARCH_SELECTION_TIME = 9.20
+RESEARCH_INTERACTION_END_TIME = 10.10
+WRITE_SELECTION_TIME = 11.50
 FOCUS_TRANSITION_DURATION = 0.15
 
 STATUS_ICON_POSITION = (922, 15)
@@ -138,7 +143,7 @@ def draw_plan_window(draw: ImageDraw.ImageDraw, time: float) -> None:
     left, top, _, _ = rect
     draw.text((left + 34, top + 58), "Today", font=FONT_18_BOLD, fill=(40, 43, 54))
     tasks = ("Outline the idea", "Build the focus", "Share the result")
-    checked = 1 + int(time >= 5.75) + int(time >= 6.15)
+    checked = 1 + int(time >= 7.30) + int(time >= 7.65)
     for index, task in enumerate(tasks):
         y = top + 105 + index * 55
         is_checked = index < checked
@@ -171,10 +176,10 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         "the rest of your desktop gently fades away.",
         "Switch tasks naturally—the focus follows you.",
     )
-    typing_time = min(time, 0.75)
+    typing_time = min(time, INITIAL_WINDOW_END_TIME)
     visible_characters = min(
         sum(len(line) for line in lines),
-        max(0, round((typing_time - 0.15) * 220)),
+        max(0, round((typing_time - 0.15) * 205)),
     )
     used = 0
     for index, line in enumerate(lines):
@@ -188,7 +193,7 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         )
         used += len(line)
     caret_line = min(2, visible_characters // max(1, len(lines[0])))
-    if int(time * 3) % 2 == 0 and time < 0.75:
+    if int(time * 3) % 2 == 0 and time < INITIAL_WINDOW_END_TIME:
         current_line = lines[caret_line][
             : max(0, visible_characters - sum(len(item) for item in lines[:caret_line]))
         ]
@@ -222,7 +227,7 @@ def draw_research_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         ((225, 241, 255), "Attention"),
         ((233, 229, 255), "Flow state"),
     )
-    pulse = (math.sin(time * math.pi * 2) + 1) / 2 if 7.5 <= time <= 9.2 else 0
+    pulse = (math.sin(time * math.pi * 2) + 1) / 2 if 9.35 <= time <= 11.10 else 0
     for index, (color, title) in enumerate(cards):
         y = top + 101 + index * 67
         active = index == 1 and pulse > 0.35
@@ -356,14 +361,18 @@ def focus_effect_strength(time: float) -> float:
 
 
 def cursor_position(time: float) -> tuple[int, int]:
-    if time < 0.75:
-        phase = (math.sin(time * math.pi * 1.4) + 1) / 2
-        return interpolate_point((470, 195), (575, 295), phase)
+    if time < INITIAL_WINDOW_END_TIME:
+        return interpolate_point(
+            (470, 195),
+            (525, 245),
+            time / INITIAL_WINDOW_END_TIME,
+        )
     if time < STATUS_MENU_FIRST_OPEN_TIME:
         return interpolate_point(
             (525, 245),
             STATUS_ICON_POSITION,
-            (time - 0.75) / (STATUS_MENU_FIRST_OPEN_TIME - 0.75),
+            (time - INITIAL_WINDOW_END_TIME)
+            / (STATUS_MENU_FIRST_OPEN_TIME - INITIAL_WINDOW_END_TIME),
         )
     if time < PAUSE_TIME:
         return interpolate_point(
@@ -372,17 +381,18 @@ def cursor_position(time: float) -> tuple[int, int]:
             (time - STATUS_MENU_FIRST_OPEN_TIME)
             / (PAUSE_TIME - STATUS_MENU_FIRST_OPEN_TIME),
         )
-    if time < 2.55:
+    if time < PAUSED_CENTER_TIME:
         return interpolate_point(
             MENU_ACTION_POSITION,
             (540, 300),
-            (time - PAUSE_TIME) / (2.55 - PAUSE_TIME),
+            (time - PAUSE_TIME) / (PAUSED_CENTER_TIME - PAUSE_TIME),
         )
     if time < STATUS_MENU_SECOND_OPEN_TIME:
         return interpolate_point(
             (540, 300),
             STATUS_ICON_POSITION,
-            (time - 2.55) / (STATUS_MENU_SECOND_OPEN_TIME - 2.55),
+            (time - PAUSED_CENTER_TIME)
+            / (STATUS_MENU_SECOND_OPEN_TIME - PAUSED_CENTER_TIME),
         )
     if time < RESUME_TIME:
         return interpolate_point(
@@ -391,41 +401,46 @@ def cursor_position(time: float) -> tuple[int, int]:
             (time - STATUS_MENU_SECOND_OPEN_TIME)
             / (RESUME_TIME - STATUS_MENU_SECOND_OPEN_TIME),
         )
-    if time < 4.45:
+    if time < WINDOW_SELECTION_START_TIME:
         return interpolate_point(
             MENU_ACTION_POSITION,
             (525, 245),
-            (time - RESUME_TIME) / (4.45 - RESUME_TIME),
+            (time - RESUME_TIME) / (WINDOW_SELECTION_START_TIME - RESUME_TIME),
         )
     if time < PLAN_SELECTION_TIME:
         return interpolate_point(
             (525, 245),
             PLAN_CLICK_POSITION,
-            (time - 4.45) / (PLAN_SELECTION_TIME - 4.45),
+            (time - WINDOW_SELECTION_START_TIME)
+            / (PLAN_SELECTION_TIME - WINDOW_SELECTION_START_TIME),
         )
-    if time < 6.30:
+    if time < PLAN_INTERACTION_END_TIME:
         return interpolate_point(
             PLAN_CLICK_POSITION,
             (162, 330),
-            (time - PLAN_SELECTION_TIME) / (6.30 - PLAN_SELECTION_TIME),
+            (time - PLAN_SELECTION_TIME)
+            / (PLAN_INTERACTION_END_TIME - PLAN_SELECTION_TIME),
         )
     if time < RESEARCH_SELECTION_TIME:
         return interpolate_point(
             (162, 330),
             RESEARCH_CLICK_POSITION,
-            (time - 6.30) / (RESEARCH_SELECTION_TIME - 6.30),
+            (time - PLAN_INTERACTION_END_TIME)
+            / (RESEARCH_SELECTION_TIME - PLAN_INTERACTION_END_TIME),
         )
-    if time < 8.45:
+    if time < RESEARCH_INTERACTION_END_TIME:
         return interpolate_point(
             RESEARCH_CLICK_POSITION,
             (850, 340),
-            (time - RESEARCH_SELECTION_TIME) / (8.45 - RESEARCH_SELECTION_TIME),
+            (time - RESEARCH_SELECTION_TIME)
+            / (RESEARCH_INTERACTION_END_TIME - RESEARCH_SELECTION_TIME),
         )
     if time < WRITE_SELECTION_TIME:
         return interpolate_point(
             (850, 340),
             WRITE_CLICK_POSITION,
-            (time - 8.45) / (WRITE_SELECTION_TIME - 8.45),
+            (time - RESEARCH_INTERACTION_END_TIME)
+            / (WRITE_SELECTION_TIME - RESEARCH_INTERACTION_END_TIME),
         )
     return interpolate_point(
         WRITE_CLICK_POSITION,
@@ -571,7 +586,7 @@ def render_frame(time: float) -> Image.Image:
         caption = "Pocus paused — every window is clear"
     elif STATUS_MENU_SECOND_OPEN_TIME <= time < RESUME_TIME:
         caption = "Menu bar → Resume Focus"
-    elif RESUME_TIME <= time < 4.45:
+    elif RESUME_TIME <= time < WINDOW_SELECTION_START_TIME:
         caption = "Pocus on — your selected window is clear"
     else:
         caption = "Only the selected window stays clear"

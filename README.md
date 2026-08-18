@@ -7,7 +7,7 @@ Pocus is a small, native macOS menu-bar app that keeps your selected window clea
 </p>
 
 <p align="center">
-  <a href="docs/pocus-demo.mp4">Watch or download the ten-second MP4 demo</a>
+  <a href="docs/pocus-demo.mp4">Watch or download the twelve-second MP4 demo</a>
 </p>
 
 ## Features
