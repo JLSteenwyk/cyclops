@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       systemSymbolName: "viewfinder",
       accessibilityDescription: "Pocus"
     )
+    statusItem.button?.appearsDisabled = false
     statusItem.button?.toolTip = "Pocus — focus on the selected window"
 
     let menu = NSMenu()
@@ -23,9 +24,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     statusItem.menu = menu
     rebuildMenu()
 
-    focusController.onStateChange = { [weak self] in
-      self?.updateStatusIcon()
-    }
     focusController.start()
 
     if !accessibility.isTrusted {
@@ -139,10 +137,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     parent.submenu = submenu
     return parent
-  }
-
-  private func updateStatusIcon() {
-    statusItem.button?.appearsDisabled = focusController.isPaused
   }
 
   @objc private func toggleFocus() {
