@@ -31,7 +31,7 @@ Pocus requires macOS 13 Ventura or newer.
 
 Launch Pocus from `/Applications` before granting access because macOS associates Accessibility approval with the installed app and its signature. Pocus uses the permission only to read the focused window's position and size. It does not request Screen Recording access, inspect window contents, or monitor typed keys.
 
-The automated release workflow signs the app with Developer ID, submits it to Apple's notarization service, staples the accepted ticket to the DMG, and refuses to publish if any of those checks fail.
+The automated release workflow signs every executable and the DMG with Developer ID, submits the outer DMG so Apple notarizes it and its nested app, staples the accepted ticket to the DMG, and refuses to publish if any check fails.
 
 ## Use
 
@@ -53,6 +53,8 @@ Its only network activity is requesting update metadata from the public appcast 
 Choose **Check for Updates…** in the menu at any time. Pocus verifies the signed appcast and the update's EdDSA signature before extraction, then asks before installing and relaunching. Automatic installation is disabled.
 
 The production update feed must be hosted at a public HTTPS URL so installed copies can reach it without GitHub credentials. Until the release repository is configured, source builds intentionally use the non-routable `updates.invalid` placeholder and **Check for Updates…** will report that no feed is available.
+
+The first updater-enabled version must be installed manually from its DMG. After that version is in `/Applications` and the public feed is configured, later signed releases can update through Sparkle without replacing the app by hand.
 
 ## Build and install a development copy
 
@@ -99,7 +101,7 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
-The workflow builds a universal app, enforces Developer ID and Hardened Runtime checks, waits for an `Accepted` notarization result, staples and validates the ticket, generates the signed Sparkle appcast, publishes the public update, and records the same artifacts on the source release.
+The workflow builds a universal app, enforces Developer ID, secure timestamp, and Hardened Runtime checks on every nested executable, signs the outer DMG, requires an issue-free `Accepted` notarization result covering the DMG and nested app, staples and validates the ticket, generates the signed Sparkle appcast, publishes the public update, and records the same artifacts on the source release.
 
 ## Architecture
 

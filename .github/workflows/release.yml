@@ -166,6 +166,7 @@ jobs:
           name: Pocus-${{ steps.metadata.outputs.version }}-release-evidence
           path: |
             dist/release/appcast.xml
+            dist/release/notarization-log.json
             dist/release/notarization.plist
             dist/release/Pocus-${{ steps.metadata.outputs.version }}.dmg.sha256
 
