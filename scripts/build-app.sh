@@ -12,6 +12,8 @@ build_number="${POCUS_BUILD_NUMBER:-$(plutil -extract CFBundleVersion raw "$info
 minimum_macos="$(plutil -extract LSMinimumSystemVersion raw "$info_plist")"
 architectures="${POCUS_ARCHITECTURES:-$(uname -m)}"
 signing_identity="${POCUS_CODE_SIGN_IDENTITY:--}"
+feed_url="${POCUS_FEED_URL:-$(plutil -extract SUFeedURL raw "$info_plist")}"
+sparkle_framework_source="$project_root/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
 
 if [[ ! "$version" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
   echo "POCUS_VERSION must be a numeric version such as 0.2.0" >&2
@@ -21,6 +23,13 @@ fi
 if [[ ! "$build_number" =~ ^[1-9][0-9]*$ ]]; then
   echo "POCUS_BUILD_NUMBER must be a positive integer" >&2
   exit 1
+fi
+
+if [[ ! "$feed_url" =~ ^https:// ]]; then
+  if [[ "${POCUS_ALLOW_INSECURE_LOCAL_FEED:-0}" != "1" || ! "$feed_url" =~ ^http://(127\.0\.0\.1|localhost)(:[0-9]+)?/ ]]; then
+    echo "POCUS_FEED_URL must use HTTPS (or an explicitly allowed localhost fixture)" >&2
+    exit 1
+  fi
 fi
 
 read -r -a architecture_list <<< "$architectures"
@@ -57,10 +66,17 @@ fi
 cp "$info_plist" "$contents_directory/Info.plist"
 plutil -replace CFBundleShortVersionString -string "$version" "$contents_directory/Info.plist"
 plutil -replace CFBundleVersion -string "$build_number" "$contents_directory/Info.plist"
+plutil -replace SUFeedURL -string "$feed_url" "$contents_directory/Info.plist"
+
+if [[ ! -d "$sparkle_framework_source" ]]; then
+  echo "Sparkle framework was not resolved at $sparkle_framework_source" >&2
+  exit 1
+fi
+mkdir -p "$contents_directory/Frameworks"
+ditto "$sparkle_framework_source" "$contents_directory/Frameworks/Sparkle.framework"
 
 signing_arguments=(
   --force
-  --options runtime
   --sign "$signing_identity"
 )
 if [[ "$signing_identity" == "-" ]]; then
@@ -68,8 +84,28 @@ if [[ "$signing_identity" == "-" ]]; then
     --requirements '=designated => identifier "com.jlsteenwyk.pocus"'
   )
 else
-  signing_arguments+=(--timestamp)
+  signing_arguments+=(--options runtime --timestamp)
 fi
+
+sparkle_framework="$contents_directory/Frameworks/Sparkle.framework"
+nested_signing_arguments=(
+  --force
+  --options runtime
+  --preserve-metadata=identifier,entitlements
+  --sign "$signing_identity"
+)
+if [[ "$signing_identity" != "-" ]]; then
+  nested_signing_arguments+=(--timestamp)
+fi
+codesign "${nested_signing_arguments[@]}" \
+  "$sparkle_framework/Versions/B/Autoupdate"
+codesign "${nested_signing_arguments[@]}" \
+  "$sparkle_framework/Versions/B/XPCServices/Downloader.xpc"
+codesign "${nested_signing_arguments[@]}" \
+  "$sparkle_framework/Versions/B/XPCServices/Installer.xpc"
+codesign "${nested_signing_arguments[@]}" \
+  "$sparkle_framework/Versions/B/Updater.app"
+codesign "${nested_signing_arguments[@]}" "$sparkle_framework"
 codesign "${signing_arguments[@]}" "$app_directory"
 
 echo "Built $app_directory ($version, build $build_number; ${architecture_list[*]})"
