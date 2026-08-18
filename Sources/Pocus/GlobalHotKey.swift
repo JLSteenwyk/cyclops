@@ -23,7 +23,8 @@ enum GlobalHotKeyError: LocalizedError {
     case .eventHandler(let status):
       "Could not install the global hotkey event handler (OSStatus \(status))."
     case .registration(let status):
-      "Control–Option–Command–P is already in use (OSStatus \(status))."
+      "Could not register Control–Option–Command–P; another app may already use it "
+        + "(OSStatus \(status))."
     }
   }
 }
