@@ -18,6 +18,15 @@ FPS = 15
 DURATION = 8
 FRAME_COUNT = FPS * DURATION
 
+PLAN_SELECTION_TIME = 2.30
+RESEARCH_SELECTION_TIME = 5.10
+WRITE_SELECTION_TIME = 7.70
+FOCUS_TRANSITION_DURATION = 0.15
+
+PLAN_CLICK_POSITION = (150, 202)
+RESEARCH_CLICK_POSITION = (825, 230)
+WRITE_CLICK_POSITION = (510, 230)
+
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIRECTORY = ROOT / "docs"
 MP4_PATH = OUTPUT_DIRECTORY / "pocus-demo.mp4"
@@ -73,6 +82,18 @@ def interpolate_rect(
 ) -> tuple[int, int, int, int]:
     eased = smoothstep(amount)
     return tuple(round(mix(a, b, eased)) for a, b in zip(start, end))  # type: ignore[return-value]
+
+
+def interpolate_point(
+    start: tuple[int, int],
+    end: tuple[int, int],
+    amount: float,
+) -> tuple[int, int]:
+    eased = smoothstep(amount)
+    return (
+        round(mix(start[0], end[0], eased)),
+        round(mix(start[1], end[1], eased)),
+    )
 
 
 def rounded_mask(rect: tuple[int, int, int, int], radius: int = 16) -> Image.Image:
@@ -143,9 +164,10 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         "the rest of your desktop gently fades away.",
         "Switch tasks naturally—the focus follows you.",
     )
+    typing_time = min(time, 1.25)
     visible_characters = min(
         sum(len(line) for line in lines),
-        max(0, round((time - 0.35) * 45)),
+        max(0, round((typing_time - 0.20) * 125)),
     )
     used = 0
     for index, line in enumerate(lines):
@@ -159,7 +181,7 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         )
         used += len(line)
     caret_line = min(2, visible_characters // max(1, len(lines[0])))
-    if int(time * 3) % 2 == 0 and time < 2.25:
+    if int(time * 3) % 2 == 0 and time < 1.25:
         current_line = lines[caret_line][
             : max(0, visible_characters - sum(len(item) for item in lines[:caret_line]))
         ]
@@ -283,26 +305,90 @@ def focus_rect(time: float) -> tuple[int, int, int, int]:
     write = WINDOWS["write"]
     plan = WINDOWS["plan"]
     research = WINDOWS["research"]
-    if time < 2.2:
+    if time < PLAN_SELECTION_TIME:
         return write
-    if time < 3.0:
-        return interpolate_rect(write, plan, (time - 2.2) / 0.8)
-    if time < 4.6:
+    if time < PLAN_SELECTION_TIME + FOCUS_TRANSITION_DURATION:
+        return interpolate_rect(
+            write,
+            plan,
+            (time - PLAN_SELECTION_TIME) / FOCUS_TRANSITION_DURATION,
+        )
+    if time < RESEARCH_SELECTION_TIME:
         return plan
-    if time < 5.4:
-        return interpolate_rect(plan, research, (time - 4.6) / 0.8)
-    if time < 7.0:
+    if time < RESEARCH_SELECTION_TIME + FOCUS_TRANSITION_DURATION:
+        return interpolate_rect(
+            plan,
+            research,
+            (time - RESEARCH_SELECTION_TIME) / FOCUS_TRANSITION_DURATION,
+        )
+    if time < WRITE_SELECTION_TIME:
         return research
-    return interpolate_rect(research, write, (time - 7.0) / 1.0)
-
-
-def cursor_position(time: float, rect: tuple[int, int, int, int]) -> tuple[int, int]:
-    left, top, right, bottom = rect
-    phase = (math.sin(time * 1.7) + 1) / 2
-    return (
-        round(mix(left + 70, right - 55, phase)),
-        round(mix(top + 100, bottom - 70, 1 - phase)),
+    return interpolate_rect(
+        research,
+        write,
+        (time - WRITE_SELECTION_TIME) / FOCUS_TRANSITION_DURATION,
     )
+
+
+def cursor_position(time: float) -> tuple[int, int]:
+    if time < 1.25:
+        phase = (math.sin(time * math.pi * 1.4) + 1) / 2
+        return interpolate_point((470, 195), (575, 295), phase)
+    if time < PLAN_SELECTION_TIME:
+        return interpolate_point(
+            (525, 245),
+            PLAN_CLICK_POSITION,
+            (time - 1.25) / (PLAN_SELECTION_TIME - 1.25),
+        )
+    if time < 4.25:
+        return interpolate_point(
+            PLAN_CLICK_POSITION,
+            (162, 330),
+            (time - PLAN_SELECTION_TIME) / (4.25 - PLAN_SELECTION_TIME),
+        )
+    if time < RESEARCH_SELECTION_TIME:
+        return interpolate_point(
+            (162, 330),
+            RESEARCH_CLICK_POSITION,
+            (time - 4.25) / (RESEARCH_SELECTION_TIME - 4.25),
+        )
+    if time < 6.65:
+        return interpolate_point(
+            RESEARCH_CLICK_POSITION,
+            (850, 340),
+            (time - RESEARCH_SELECTION_TIME) / (6.65 - RESEARCH_SELECTION_TIME),
+        )
+    if time < WRITE_SELECTION_TIME:
+        return interpolate_point(
+            (850, 340),
+            WRITE_CLICK_POSITION,
+            (time - 6.65) / (WRITE_SELECTION_TIME - 6.65),
+        )
+    return interpolate_point(
+        WRITE_CLICK_POSITION,
+        (565, 285),
+        (time - WRITE_SELECTION_TIME) / (DURATION - WRITE_SELECTION_TIME),
+    )
+
+
+def draw_click_feedback(draw: ImageDraw.ImageDraw, time: float) -> None:
+    selections = (
+        (PLAN_SELECTION_TIME, PLAN_CLICK_POSITION),
+        (RESEARCH_SELECTION_TIME, RESEARCH_CLICK_POSITION),
+        (WRITE_SELECTION_TIME, WRITE_CLICK_POSITION),
+    )
+    for selection_time, (x, y) in selections:
+        elapsed = time - selection_time
+        if not 0 <= elapsed <= 0.35:
+            continue
+        progress = elapsed / 0.35
+        radius = round(mix(7, 25, progress))
+        alpha = round(mix(230, 0, progress))
+        draw.ellipse(
+            (x - radius, y - radius, x + radius, y + radius),
+            outline=(38, 142, 255, alpha),
+            width=3,
+        )
 
 
 def render_frame(time: float) -> Image.Image:
@@ -319,7 +405,8 @@ def render_frame(time: float) -> Image.Image:
     draw = ImageDraw.Draw(frame, "RGBA")
     draw.rounded_rectangle(padded, radius=20, outline=(255, 255, 255, 155), width=2)
 
-    cursor_x, cursor_y = cursor_position(time, rect)
+    draw_click_feedback(draw, time)
+    cursor_x, cursor_y = cursor_position(time)
     cursor = (
         (cursor_x, cursor_y),
         (cursor_x + 3, cursor_y + 19),
@@ -331,7 +418,7 @@ def render_frame(time: float) -> Image.Image:
     )
     draw.polygon(cursor, fill=(255, 255, 255, 255), outline=(30, 34, 45, 255))
 
-    caption = "Focus follows your selected window"
+    caption = "Only the selected window stays clear"
     caption_width = draw.textlength(caption, font=FONT_14_BOLD)
     caption_rect = (
         WIDTH / 2 - caption_width / 2 - 18,
