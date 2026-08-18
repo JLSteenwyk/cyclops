@@ -4,10 +4,10 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 port="${POCUS_UPDATE_FIXTURE_PORT:-8765}"
-base_version="${POCUS_FIXTURE_BASE_VERSION:-0.2.0}"
-base_build="${POCUS_FIXTURE_BASE_BUILD:-2}"
-update_version="${POCUS_FIXTURE_UPDATE_VERSION:-0.2.1}"
-update_build="${POCUS_FIXTURE_UPDATE_BUILD:-3}"
+base_version="${POCUS_FIXTURE_BASE_VERSION:-0.3.0}"
+base_build="${POCUS_FIXTURE_BASE_BUILD:-4}"
+update_version="${POCUS_FIXTURE_UPDATE_VERSION:-0.3.1}"
+update_build="${POCUS_FIXTURE_UPDATE_BUILD:-5}"
 feed_url="http://127.0.0.1:$port/appcast.xml"
 sparkle_tools_directory="$project_root/.build/artifacts/sparkle/Sparkle/bin"
 
