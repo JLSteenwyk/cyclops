@@ -19,7 +19,7 @@ enum BackdropStrength: String, CaseIterable {
 }
 
 @MainActor
-final class PocusSettings {
+final class CyclopsSettings {
   private enum Key {
     static let strength = "backdropStrength"
     static let padding = "focusPadding"

@@ -3,7 +3,7 @@ import ApplicationServices
 
 enum FocusLookupResult {
   case window(CGRect)
-  case pocusIsFrontmost
+  case cyclopsIsFrontmost
   case noWindow
 }
 
@@ -36,7 +36,7 @@ struct AccessibilityService {
     }
 
     if focusedPID == ownPID {
-      return .pocusIsFrontmost
+      return .cyclopsIsFrontmost
     }
 
     guard

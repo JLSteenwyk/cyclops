@@ -3,7 +3,7 @@ import AppKit
 @MainActor
 final class FocusController: NSObject {
   private let accessibility: AccessibilityService
-  private let settings: PocusSettings
+  private let settings: CyclopsSettings
   private let overlays = OverlayManager()
   private var refreshTimer: Timer?
   private var lastFocusedWindowFrame: CGRect?
@@ -11,7 +11,7 @@ final class FocusController: NSObject {
   private(set) var isPaused = false
   var onStateChange: (() -> Void)?
 
-  init(accessibility: AccessibilityService, settings: PocusSettings) {
+  init(accessibility: AccessibilityService, settings: CyclopsSettings) {
     self.accessibility = accessibility
     self.settings = settings
     super.init()
@@ -80,7 +80,7 @@ final class FocusController: NSObject {
         padding: settings.padding,
         strength: settings.strength
       )
-    case .pocusIsFrontmost:
+    case .cyclopsIsFrontmost:
       refreshUsingLastFrame()
     case .noWindow:
       lastFocusedWindowFrame = nil

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the synthetic Pocus README demo without recording a real desktop."""
+"""Generate the synthetic Cyclops README demo without recording a real desktop."""
 
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ WRITE_CLICK_POSITION = (510, 230)
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIRECTORY = ROOT / "docs"
-MP4_PATH = OUTPUT_DIRECTORY / "pocus-demo.mp4"
-GIF_PATH = OUTPUT_DIRECTORY / "pocus-demo.gif"
+MP4_PATH = OUTPUT_DIRECTORY / "cyclops-demo.mp4"
+GIF_PATH = OUTPUT_DIRECTORY / "cyclops-demo.gif"
 
 WINDOWS = {
     "plan": (38, 112, 286, 410),
@@ -172,7 +172,7 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         fill=(32, 38, 52),
     )
     lines = (
-        "Pocus keeps the selected window clear while",
+        "Cyclops keeps the selected window clear while",
         "the rest of your desktop gently fades away.",
         "Switch tasks naturally—the focus follows you.",
     )
@@ -258,9 +258,9 @@ def draw_desktop(time: float) -> Image.Image:
     draw.ellipse((600, -220, 1100, 280), fill=(255, 125, 163, 85))
     draw.rounded_rectangle((0, 0, WIDTH, 32), radius=0, fill=(249, 249, 252, 220))
     draw.text((16, 8), "●", font=FONT_11, fill=(38, 41, 50))
-    draw.text((35, 8), "Pocus Demo", font=FONT_12, fill=(38, 41, 50))
+    draw.text((35, 8), "Cyclops Demo", font=FONT_12, fill=(38, 41, 50))
     draw.text((790, 8), "Focus", font=FONT_12, fill=(56, 60, 72))
-    draw_viewfinder(draw, 915, 8, (38, 142, 255, 255))
+    draw_cyclops_eye(draw, 915, 8, (38, 41, 50, 255))
 
     draw_plan_window(draw, time)
     draw_write_window(draw, time)
@@ -286,31 +286,15 @@ def draw_desktop(time: float) -> Image.Image:
     return image
 
 
-def draw_viewfinder(
+def draw_cyclops_eye(
     draw: ImageDraw.ImageDraw,
     x: int,
     y: int,
     color: tuple[int, int, int, int],
 ) -> None:
-    length = 6
-    size = 15
-    width = 2
-    draw.line((x, y + length, x, y, x + length, y), fill=color, width=width)
-    draw.line(
-        (x + size - length, y, x + size, y, x + size, y + length),
-        fill=color,
-        width=width,
-    )
-    draw.line(
-        (x, y + size - length, x, y + size, x + length, y + size),
-        fill=color,
-        width=width,
-    )
-    draw.line(
-        (x + size - length, y + size, x + size, y + size, x + size, y + size - length),
-        fill=color,
-        width=width,
-    )
+    draw.ellipse((x, y + 2, x + 16, y + 13), outline=color, width=2)
+    draw.ellipse((x + 5, y + 3, x + 11, y + 12), outline=color, width=1)
+    draw.rounded_rectangle((x + 7, y + 5, x + 9, y + 11), radius=1, fill=color)
 
 
 def focus_rect(time: float) -> tuple[int, int, int, int]:
@@ -466,7 +450,7 @@ def draw_status_menu(draw: ImageDraw.ImageDraw, time: float, action: str) -> Non
         outline=(221, 224, 232, 255),
         width=1,
     )
-    draw.text((left + 16, top + 12), "Pocus", font=FONT_13, fill=(138, 143, 155))
+    draw.text((left + 16, top + 12), "Cyclops", font=FONT_13, fill=(138, 143, 155))
 
     hovered = (
         STATUS_MENU_FIRST_OPEN_TIME + 0.42 <= time <= PAUSE_TIME + 0.12
@@ -506,7 +490,7 @@ def draw_status_menu(draw: ImageDraw.ImageDraw, time: float, action: str) -> Non
         font=FONT_13,
         fill=(42, 46, 57),
     )
-    draw.text((left + 16, top + 205), "Quit Pocus", font=FONT_13, fill=(42, 46, 57))
+    draw.text((left + 16, top + 205), "Quit Cyclops", font=FONT_13, fill=(42, 46, 57))
     draw.text((right - 47, top + 205), "⌘ Q", font=FONT_12, fill=(145, 150, 162))
 
 
@@ -578,11 +562,11 @@ def render_frame(time: float) -> Image.Image:
     if STATUS_MENU_FIRST_OPEN_TIME <= time < PAUSE_TIME:
         caption = "Menu bar → Pause Focus"
     elif PAUSE_TIME <= time < STATUS_MENU_SECOND_OPEN_TIME:
-        caption = "Pocus paused — every window is clear"
+        caption = "Cyclops paused — every window is clear"
     elif STATUS_MENU_SECOND_OPEN_TIME <= time < RESUME_TIME:
         caption = "Menu bar → Resume Focus"
     elif RESUME_TIME <= time < WINDOW_SELECTION_START_TIME:
-        caption = "Pocus on — your selected window is clear"
+        caption = "Cyclops on — your selected window is clear"
     else:
         caption = "Only the selected window stays clear"
     caption_width = draw.textlength(caption, font=FONT_14_BOLD)
@@ -654,7 +638,7 @@ def encode_video(frames_directory: Path) -> None:
 
 
 def main() -> None:
-    with tempfile.TemporaryDirectory(prefix="pocus-demo-") as temporary_directory:
+    with tempfile.TemporaryDirectory(prefix="cyclops-demo-") as temporary_directory:
         frames_directory = Path(temporary_directory)
         for index in range(FRAME_COUNT):
             time = index / FPS

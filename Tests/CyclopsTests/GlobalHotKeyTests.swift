@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import Testing
 
-@testable import Pocus
+@testable import Cyclops
 
 struct GlobalHotKeyTests {
   @Test @MainActor

@@ -1,7 +1,7 @@
 import AppKit
 import Testing
 
-@testable import Pocus
+@testable import Cyclops
 
 struct OverlayGeometryTests {
   @Test

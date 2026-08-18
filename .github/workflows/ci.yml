@@ -25,18 +25,18 @@ jobs:
 
       - name: Verify app bundle
         env:
-          POCUS_EXPECTED_ARCHITECTURES: arm64 x86_64
+          CYCLOPS_EXPECTED_ARCHITECTURES: arm64 x86_64
         run: ./scripts/verify-app.sh
 
       - name: Build and verify DMG
         run: |
           ./scripts/create-dmg.sh
-          hdiutil verify "dist/Pocus-$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist).dmg"
+          hdiutil verify "dist/Cyclops-$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist).dmg"
 
       - name: Smoke-test safe installation
         env:
-          POCUS_INSTALL_DESTINATION: ${{ runner.temp }}/Applications/Pocus.app
-          POCUS_LAUNCH_AFTER_INSTALL: "0"
+          CYCLOPS_INSTALL_DESTINATION: ${{ runner.temp }}/Applications/Cyclops.app
+          CYCLOPS_LAUNCH_AFTER_INSTALL: "0"
         run: |
           ./scripts/install-app.sh
-          ./scripts/verify-app.sh "$POCUS_INSTALL_DESTINATION"
+          ./scripts/verify-app.sh "$CYCLOPS_INSTALL_DESTINATION"
