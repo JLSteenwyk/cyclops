@@ -260,12 +260,7 @@ def draw_desktop(time: float) -> Image.Image:
     draw.text((16, 8), "●", font=FONT_11, fill=(38, 41, 50))
     draw.text((35, 8), "Pocus Demo", font=FONT_12, fill=(38, 41, 50))
     draw.text((790, 8), "Focus", font=FONT_12, fill=(56, 60, 72))
-    status_color = (
-        (132, 137, 150, 255)
-        if PAUSE_TIME <= time < RESUME_TIME
-        else (38, 142, 255, 255)
-    )
-    draw_viewfinder(draw, 915, 8, status_color)
+    draw_viewfinder(draw, 915, 8, (38, 142, 255, 255))
 
     draw_plan_window(draw, time)
     draw_write_window(draw, time)
