@@ -15,14 +15,21 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 WIDTH = 960
 HEIGHT = 540
 FPS = 15
-DURATION = 8
+DURATION = 10
 FRAME_COUNT = FPS * DURATION
 
-PLAN_SELECTION_TIME = 2.30
-RESEARCH_SELECTION_TIME = 5.10
-WRITE_SELECTION_TIME = 7.70
+STATUS_MENU_FIRST_OPEN_TIME = 1.25
+PAUSE_TIME = 2.00
+STATUS_MENU_SECOND_OPEN_TIME = 3.05
+RESUME_TIME = 3.80
+
+PLAN_SELECTION_TIME = 5.35
+RESEARCH_SELECTION_TIME = 7.35
+WRITE_SELECTION_TIME = 9.55
 FOCUS_TRANSITION_DURATION = 0.15
 
+STATUS_ICON_POSITION = (922, 15)
+MENU_ACTION_POSITION = (740, 79)
 PLAN_CLICK_POSITION = (150, 202)
 RESEARCH_CLICK_POSITION = (825, 230)
 WRITE_CLICK_POSITION = (510, 230)
@@ -131,7 +138,7 @@ def draw_plan_window(draw: ImageDraw.ImageDraw, time: float) -> None:
     left, top, _, _ = rect
     draw.text((left + 34, top + 58), "Today", font=FONT_18_BOLD, fill=(40, 43, 54))
     tasks = ("Outline the idea", "Build the focus", "Share the result")
-    checked = 1 + int(time >= 3.55) + int(time >= 4.05)
+    checked = 1 + int(time >= 5.75) + int(time >= 6.15)
     for index, task in enumerate(tasks):
         y = top + 105 + index * 55
         is_checked = index < checked
@@ -164,10 +171,10 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         "the rest of your desktop gently fades away.",
         "Switch tasks naturally—the focus follows you.",
     )
-    typing_time = min(time, 1.25)
+    typing_time = min(time, 0.75)
     visible_characters = min(
         sum(len(line) for line in lines),
-        max(0, round((typing_time - 0.20) * 125)),
+        max(0, round((typing_time - 0.15) * 220)),
     )
     used = 0
     for index, line in enumerate(lines):
@@ -181,7 +188,7 @@ def draw_write_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         )
         used += len(line)
     caret_line = min(2, visible_characters // max(1, len(lines[0])))
-    if int(time * 3) % 2 == 0 and time < 1.25:
+    if int(time * 3) % 2 == 0 and time < 0.75:
         current_line = lines[caret_line][
             : max(0, visible_characters - sum(len(item) for item in lines[:caret_line]))
         ]
@@ -215,7 +222,7 @@ def draw_research_window(draw: ImageDraw.ImageDraw, time: float) -> None:
         ((225, 241, 255), "Attention"),
         ((233, 229, 255), "Flow state"),
     )
-    pulse = (math.sin(time * math.pi * 2) + 1) / 2 if 5.4 <= time <= 7.1 else 0
+    pulse = (math.sin(time * math.pi * 2) + 1) / 2 if 7.5 <= time <= 9.2 else 0
     for index, (color, title) in enumerate(cards):
         y = top + 101 + index * 67
         active = index == 1 and pulse > 0.35
@@ -248,7 +255,12 @@ def draw_desktop(time: float) -> Image.Image:
     draw.text((16, 8), "●", font=FONT_11, fill=(38, 41, 50))
     draw.text((35, 8), "Pocus Demo", font=FONT_12, fill=(38, 41, 50))
     draw.text((790, 8), "Focus", font=FONT_12, fill=(56, 60, 72))
-    draw_viewfinder(draw, 915, 8, (38, 142, 255, 255))
+    status_color = (
+        (132, 137, 150, 255)
+        if PAUSE_TIME <= time < RESUME_TIME
+        else (38, 142, 255, 255)
+    )
+    draw_viewfinder(draw, 915, 8, status_color)
 
     draw_plan_window(draw, time)
     draw_write_window(draw, time)
@@ -330,39 +342,90 @@ def focus_rect(time: float) -> tuple[int, int, int, int]:
     )
 
 
+def focus_effect_strength(time: float) -> float:
+    fade_duration = 0.18
+    if time < PAUSE_TIME:
+        return 1.0
+    if time < PAUSE_TIME + fade_duration:
+        return 1 - smoothstep((time - PAUSE_TIME) / fade_duration)
+    if time < RESUME_TIME:
+        return 0.0
+    if time < RESUME_TIME + fade_duration:
+        return smoothstep((time - RESUME_TIME) / fade_duration)
+    return 1.0
+
+
 def cursor_position(time: float) -> tuple[int, int]:
-    if time < 1.25:
+    if time < 0.75:
         phase = (math.sin(time * math.pi * 1.4) + 1) / 2
         return interpolate_point((470, 195), (575, 295), phase)
+    if time < STATUS_MENU_FIRST_OPEN_TIME:
+        return interpolate_point(
+            (525, 245),
+            STATUS_ICON_POSITION,
+            (time - 0.75) / (STATUS_MENU_FIRST_OPEN_TIME - 0.75),
+        )
+    if time < PAUSE_TIME:
+        return interpolate_point(
+            STATUS_ICON_POSITION,
+            MENU_ACTION_POSITION,
+            (time - STATUS_MENU_FIRST_OPEN_TIME)
+            / (PAUSE_TIME - STATUS_MENU_FIRST_OPEN_TIME),
+        )
+    if time < 2.55:
+        return interpolate_point(
+            MENU_ACTION_POSITION,
+            (540, 300),
+            (time - PAUSE_TIME) / (2.55 - PAUSE_TIME),
+        )
+    if time < STATUS_MENU_SECOND_OPEN_TIME:
+        return interpolate_point(
+            (540, 300),
+            STATUS_ICON_POSITION,
+            (time - 2.55) / (STATUS_MENU_SECOND_OPEN_TIME - 2.55),
+        )
+    if time < RESUME_TIME:
+        return interpolate_point(
+            STATUS_ICON_POSITION,
+            MENU_ACTION_POSITION,
+            (time - STATUS_MENU_SECOND_OPEN_TIME)
+            / (RESUME_TIME - STATUS_MENU_SECOND_OPEN_TIME),
+        )
+    if time < 4.45:
+        return interpolate_point(
+            MENU_ACTION_POSITION,
+            (525, 245),
+            (time - RESUME_TIME) / (4.45 - RESUME_TIME),
+        )
     if time < PLAN_SELECTION_TIME:
         return interpolate_point(
             (525, 245),
             PLAN_CLICK_POSITION,
-            (time - 1.25) / (PLAN_SELECTION_TIME - 1.25),
+            (time - 4.45) / (PLAN_SELECTION_TIME - 4.45),
         )
-    if time < 4.25:
+    if time < 6.30:
         return interpolate_point(
             PLAN_CLICK_POSITION,
             (162, 330),
-            (time - PLAN_SELECTION_TIME) / (4.25 - PLAN_SELECTION_TIME),
+            (time - PLAN_SELECTION_TIME) / (6.30 - PLAN_SELECTION_TIME),
         )
     if time < RESEARCH_SELECTION_TIME:
         return interpolate_point(
             (162, 330),
             RESEARCH_CLICK_POSITION,
-            (time - 4.25) / (RESEARCH_SELECTION_TIME - 4.25),
+            (time - 6.30) / (RESEARCH_SELECTION_TIME - 6.30),
         )
-    if time < 6.65:
+    if time < 8.45:
         return interpolate_point(
             RESEARCH_CLICK_POSITION,
             (850, 340),
-            (time - RESEARCH_SELECTION_TIME) / (6.65 - RESEARCH_SELECTION_TIME),
+            (time - RESEARCH_SELECTION_TIME) / (8.45 - RESEARCH_SELECTION_TIME),
         )
     if time < WRITE_SELECTION_TIME:
         return interpolate_point(
             (850, 340),
             WRITE_CLICK_POSITION,
-            (time - 6.65) / (WRITE_SELECTION_TIME - 6.65),
+            (time - 8.45) / (WRITE_SELECTION_TIME - 8.45),
         )
     return interpolate_point(
         WRITE_CLICK_POSITION,
@@ -371,17 +434,87 @@ def cursor_position(time: float) -> tuple[int, int]:
     )
 
 
+def status_menu_action(time: float) -> str | None:
+    if STATUS_MENU_FIRST_OPEN_TIME <= time <= PAUSE_TIME + 0.12:
+        return "Pause Focus"
+    if STATUS_MENU_SECOND_OPEN_TIME <= time <= RESUME_TIME + 0.12:
+        return "Resume Focus"
+    return None
+
+
+def draw_status_menu(draw: ImageDraw.ImageDraw, time: float, action: str) -> None:
+    left, top, right, bottom = (658, 35, 946, 261)
+    draw.rounded_rectangle(
+        (left + 3, top + 5, right + 3, bottom + 5),
+        radius=13,
+        fill=(9, 13, 24, 45),
+    )
+    draw.rounded_rectangle(
+        (left, top, right, bottom),
+        radius=13,
+        fill=(246, 248, 252, 246),
+        outline=(221, 224, 232, 255),
+        width=1,
+    )
+    draw.text((left + 16, top + 12), "Pocus", font=FONT_13, fill=(138, 143, 155))
+
+    hovered = (
+        STATUS_MENU_FIRST_OPEN_TIME + 0.42 <= time <= PAUSE_TIME + 0.12
+        or STATUS_MENU_SECOND_OPEN_TIME + 0.42 <= time <= RESUME_TIME + 0.12
+    )
+    if hovered:
+        draw.rounded_rectangle(
+            (left + 7, top + 34, right - 7, top + 62),
+            radius=6,
+            fill=(38, 142, 255, 235),
+        )
+    draw.text(
+        (left + 16, top + 40),
+        action,
+        font=FONT_14_BOLD,
+        fill=(255, 255, 255) if hovered else (35, 39, 49),
+    )
+    explanation = (
+        "Focus is paused"
+        if action == "Resume Focus"
+        else "Following the selected window"
+    )
+    draw.text((left + 16, top + 72), explanation, font=FONT_13, fill=(153, 158, 170))
+    draw.line(
+        (left + 10, top + 99, right - 10, top + 99), fill=(214, 217, 225), width=1
+    )
+    draw.text((left + 16, top + 111), "Backdrop", font=FONT_13, fill=(42, 46, 57))
+    draw.text((right - 23, top + 109), "›", font=FONT_18_BOLD, fill=(67, 72, 84))
+    draw.text((left + 16, top + 139), "Focus Padding", font=FONT_13, fill=(42, 46, 57))
+    draw.text((right - 23, top + 137), "›", font=FONT_18_BOLD, fill=(67, 72, 84))
+    draw.line(
+        (left + 10, top + 166, right - 10, top + 166), fill=(214, 217, 225), width=1
+    )
+    draw.text(
+        (left + 16, top + 178),
+        "Open Accessibility Settings…",
+        font=FONT_13,
+        fill=(42, 46, 57),
+    )
+    draw.text((left + 16, top + 205), "Quit Pocus", font=FONT_13, fill=(42, 46, 57))
+    draw.text((right - 47, top + 205), "⌘ Q", font=FONT_12, fill=(145, 150, 162))
+
+
 def draw_click_feedback(draw: ImageDraw.ImageDraw, time: float) -> None:
     selections = (
-        (PLAN_SELECTION_TIME, PLAN_CLICK_POSITION),
-        (RESEARCH_SELECTION_TIME, RESEARCH_CLICK_POSITION),
-        (WRITE_SELECTION_TIME, WRITE_CLICK_POSITION),
+        (STATUS_MENU_FIRST_OPEN_TIME, STATUS_ICON_POSITION, 0.20),
+        (PAUSE_TIME, MENU_ACTION_POSITION, 0.15),
+        (STATUS_MENU_SECOND_OPEN_TIME, STATUS_ICON_POSITION, 0.20),
+        (RESUME_TIME, MENU_ACTION_POSITION, 0.15),
+        (PLAN_SELECTION_TIME, PLAN_CLICK_POSITION, 0.35),
+        (RESEARCH_SELECTION_TIME, RESEARCH_CLICK_POSITION, 0.35),
+        (WRITE_SELECTION_TIME, WRITE_CLICK_POSITION, 0.35),
     )
-    for selection_time, (x, y) in selections:
+    for selection_time, (x, y), duration in selections:
         elapsed = time - selection_time
-        if not 0 <= elapsed <= 0.35:
+        if not 0 <= elapsed <= duration:
             continue
-        progress = elapsed / 0.35
+        progress = elapsed / duration
         radius = round(mix(7, 25, progress))
         alpha = round(mix(230, 0, progress))
         draw.ellipse(
@@ -399,11 +532,25 @@ def render_frame(time: float) -> Image.Image:
 
     rect = focus_rect(time)
     padded = (rect[0] - 8, rect[1] - 8, rect[2] + 8, rect[3] + 8)
-    frame = Image.composite(base, muted, rounded_mask(padded, radius=20)).convert(
-        "RGBA"
+    focused_frame = Image.composite(
+        base,
+        muted,
+        rounded_mask(padded, radius=20),
     )
+    strength = focus_effect_strength(time)
+    frame = Image.blend(base, focused_frame, strength).convert("RGBA")
+    frame.paste(base.crop((0, 0, WIDTH, 32)), (0, 0))
     draw = ImageDraw.Draw(frame, "RGBA")
-    draw.rounded_rectangle(padded, radius=20, outline=(255, 255, 255, 155), width=2)
+    draw.rounded_rectangle(
+        padded,
+        radius=20,
+        outline=(255, 255, 255, round(155 * strength)),
+        width=2,
+    )
+
+    menu_action = status_menu_action(time)
+    if menu_action is not None:
+        draw_status_menu(draw, time, menu_action)
 
     draw_click_feedback(draw, time)
     cursor_x, cursor_y = cursor_position(time)
@@ -418,7 +565,16 @@ def render_frame(time: float) -> Image.Image:
     )
     draw.polygon(cursor, fill=(255, 255, 255, 255), outline=(30, 34, 45, 255))
 
-    caption = "Only the selected window stays clear"
+    if STATUS_MENU_FIRST_OPEN_TIME <= time < PAUSE_TIME:
+        caption = "Menu bar → Pause Focus"
+    elif PAUSE_TIME <= time < STATUS_MENU_SECOND_OPEN_TIME:
+        caption = "Pocus paused — every window is clear"
+    elif STATUS_MENU_SECOND_OPEN_TIME <= time < RESUME_TIME:
+        caption = "Menu bar → Resume Focus"
+    elif RESUME_TIME <= time < 4.45:
+        caption = "Pocus on — your selected window is clear"
+    else:
+        caption = "Only the selected window stays clear"
     caption_width = draw.textlength(caption, font=FONT_14_BOLD)
     caption_rect = (
         WIDTH / 2 - caption_width / 2 - 18,

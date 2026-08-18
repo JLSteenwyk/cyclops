@@ -3,11 +3,11 @@
 Pocus is a small, native macOS menu-bar app that keeps your selected window clear while blurring and dimming everything around it. Change windows normally and the focus area follows you across displays and Spaces.
 
 <p align="center">
-  <img src="docs/pocus-demo.gif" alt="Pocus moving its clear focus area between selected windows while the rest of a macOS desktop stays blurred" width="720">
+  <img src="docs/pocus-demo.gif" alt="Pocus pausing and resuming from its menu bar status item, then keeping only the selected window clear while the rest of a macOS desktop stays blurred" width="720">
 </p>
 
 <p align="center">
-  <a href="docs/pocus-demo.mp4">Watch or download the eight-second MP4 demo</a>
+  <a href="docs/pocus-demo.mp4">Watch or download the ten-second MP4 demo</a>
 </p>
 
 ## Features
