@@ -7,6 +7,7 @@ app_directory="${1:-$project_root/dist/Pocus.app}"
 expected_architectures="${POCUS_EXPECTED_ARCHITECTURES:-}"
 expected_version="${POCUS_EXPECTED_VERSION:-}"
 expected_build_number="${POCUS_EXPECTED_BUILD_NUMBER:-}"
+expected_team_id="${POCUS_EXPECTED_TEAM_ID:-}"
 info_plist="$app_directory/Contents/Info.plist"
 executable="$app_directory/Contents/MacOS/Pocus"
 sparkle_framework="$app_directory/Contents/Frameworks/Sparkle.framework"
@@ -56,6 +57,27 @@ codesign_details="$(codesign -dv --verbose=4 "$app_directory" 2>&1)"
 if [[ "${POCUS_REQUIRE_HARDENED_RUNTIME:-0}" == "1" ]]; then
   if ! grep -q 'flags=.*runtime' <<< "$codesign_details"; then
     echo "Hardened Runtime is not enabled" >&2
+    exit 1
+  fi
+fi
+
+if [[ "${POCUS_REQUIRE_PRODUCTION_SIGNING:-0}" == "1" ]]; then
+  if grep -q '^Signature=adhoc$' <<< "$codesign_details"; then
+    echo "Pocus is ad-hoc signed; a Developer ID signature is required" >&2
+    exit 1
+  fi
+  if ! grep -q '^Authority=Developer ID Application:' <<< "$codesign_details"; then
+    echo "Pocus is not signed with a Developer ID Application certificate" >&2
+    exit 1
+  fi
+
+  team_id="$(sed -n 's/^TeamIdentifier=//p' <<< "$codesign_details")"
+  if [[ -z "$team_id" || "$team_id" == "not set" ]]; then
+    echo "Pocus does not contain a signing team identifier" >&2
+    exit 1
+  fi
+  if [[ -n "$expected_team_id" && "$team_id" != "$expected_team_id" ]]; then
+    echo "Expected signing team $expected_team_id, found $team_id" >&2
     exit 1
   fi
 fi
