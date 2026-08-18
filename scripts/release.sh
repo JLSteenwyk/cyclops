@@ -30,6 +30,7 @@ require_value POCUS_DOWNLOAD_BASE_URL "$download_base_url"
 require_value POCUS_CODE_SIGN_IDENTITY "$signing_identity"
 require_value POCUS_SPARKLE_PRIVATE_KEY_FILE "$sparkle_key_file"
 require_value POCUS_NOTARY_KEYCHAIN_PROFILE "$notary_profile"
+require_value POCUS_EXPECTED_TEAM_ID "$expected_team_id"
 
 if [[ "$signing_identity" == "-" ]]; then
   echo "Ad-hoc signing is not allowed for production releases" >&2
@@ -84,6 +85,26 @@ dmg_path="$release_directory/Pocus-$version.dmg"
 POCUS_VERSION="$version" "$project_root/scripts/create-dmg.sh" \
   "$project_root/dist/Pocus.app" \
   "$dmg_path"
+codesign --force --timestamp --sign "$signing_identity" "$dmg_path"
+codesign --verify --strict --verbose=2 "$dmg_path"
+dmg_signing_details="$(codesign -dv --verbose=4 "$dmg_path" 2>&1)"
+if ! grep -q '^Authority=Developer ID Application:' <<< "$dmg_signing_details"; then
+  echo "Release DMG is not signed with a Developer ID Application certificate" >&2
+  exit 1
+fi
+if ! grep -q '^Timestamp=' <<< "$dmg_signing_details"; then
+  echo "Release DMG does not contain a secure signing timestamp" >&2
+  exit 1
+fi
+dmg_team_id="$(sed -n 's/^TeamIdentifier=//p' <<< "$dmg_signing_details")"
+if [[ -z "$dmg_team_id" || "$dmg_team_id" == "not set" ]]; then
+  echo "Release DMG does not contain a signing team identifier" >&2
+  exit 1
+fi
+if [[ -n "$expected_team_id" && "$dmg_team_id" != "$expected_team_id" ]]; then
+  echo "Expected DMG signing team $expected_team_id, found $dmg_team_id" >&2
+  exit 1
+fi
 
 notary_arguments=(--keychain-profile "$notary_profile")
 if [[ -n "$notary_keychain" ]]; then
@@ -100,6 +121,27 @@ if [[ "$notary_status" != "Accepted" ]]; then
   echo "Apple notarization status was $notary_status, not Accepted" >&2
   exit 1
 fi
+notary_submission_id="$(plutil -extract id raw "$notary_result")"
+notary_log="$release_directory/notarization-log.json"
+xcrun notarytool log \
+  "$notary_submission_id" \
+  "$notary_log" \
+  "${notary_arguments[@]}"
+python3 - "$notary_log" <<'PYTHON'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as notarization_log:
+    issues = json.load(notarization_log).get("issues", [])
+if issues:
+    print("Apple notarization returned issues:", file=sys.stderr)
+    for issue in issues:
+        severity = issue.get("severity", "unknown")
+        message = issue.get("message", "No message")
+        path = issue.get("path", "unknown path")
+        print(f"  [{severity}] {path}: {message}", file=sys.stderr)
+    raise SystemExit(1)
+PYTHON
 
 xcrun stapler staple "$dmg_path"
 xcrun stapler validate "$dmg_path"
