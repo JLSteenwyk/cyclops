@@ -29,7 +29,7 @@ final class OverlayManager {
 
   func hide() {
     for panel in panels {
-      panel.orderOut(nil)
+      panel.hide()
     }
   }
 }

@@ -1,7 +1,8 @@
 import AppKit
 
 @MainActor
-final class FocusOverlayPanel: NSPanel {
+final class FocusOverlayPanel {
+  private let panel: NSPanel
   private let overlayView: FocusOverlayView
   private let screenFrame: CGRect
   private var currentLocalFocusRect: CGRect?
@@ -9,30 +10,28 @@ final class FocusOverlayPanel: NSPanel {
   init(screen: NSScreen) {
     screenFrame = screen.frame
     overlayView = FocusOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
-
-    super.init(
+    panel = NSPanel(
       contentRect: screen.frame,
       styleMask: [.borderless, .nonactivatingPanel],
       backing: .buffered,
-      defer: false,
-      screen: screen
+      defer: false
     )
 
-    isOpaque = false
-    backgroundColor = .clear
-    hasShadow = false
-    ignoresMouseEvents = true
-    hidesOnDeactivate = false
-    isReleasedWhenClosed = false
-    animationBehavior = .none
-    collectionBehavior = [
+    panel.isOpaque = false
+    panel.backgroundColor = .clear
+    panel.hasShadow = false
+    panel.ignoresMouseEvents = true
+    panel.hidesOnDeactivate = false
+    panel.isReleasedWhenClosed = false
+    panel.animationBehavior = .none
+    panel.collectionBehavior = [
       .canJoinAllSpaces,
       .stationary,
       .fullScreenAuxiliary,
       .ignoresCycle,
     ]
-    level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
-    contentView = overlayView
+    panel.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
+    panel.contentView = overlayView
   }
 
   @discardableResult
@@ -57,9 +56,13 @@ final class FocusOverlayPanel: NSPanel {
       animated: shouldAnimate
     )
 
-    if !isVisible {
-      orderFrontRegardless()
+    if !panel.isVisible {
+      panel.orderFrontRegardless()
     }
     return localFocusRect != nil
+  }
+
+  func hide() {
+    panel.orderOut(nil)
   }
 }

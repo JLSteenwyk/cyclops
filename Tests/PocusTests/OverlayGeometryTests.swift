@@ -1,4 +1,4 @@
-import CoreGraphics
+import AppKit
 import Testing
 
 @testable import Pocus
@@ -59,5 +59,15 @@ struct OverlayGeometryTests {
     )
 
     #expect(result == nil)
+  }
+
+  @Test @MainActor
+  func constructsOverlayPanelWithoutReenteringSubclassInitializer() throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+
+    let panel = FocusOverlayPanel(screen: screen)
+
+    panel.hide()
   }
 }

@@ -16,6 +16,10 @@ mkdir -p "$contents_directory/MacOS"
 cp "$binary_path" "$contents_directory/MacOS/Pocus"
 cp "$project_root/Resources/Info.plist" "$contents_directory/Info.plist"
 
-codesign --force --sign - "$app_directory"
+codesign \
+  --force \
+  --sign - \
+  --requirements '=designated => identifier "com.jlsteenwyk.pocus"' \
+  "$app_directory"
 
 echo "Built $app_directory"
