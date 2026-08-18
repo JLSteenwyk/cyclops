@@ -129,6 +129,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
       menu.addItem(permissionItem)
     }
 
+    if let focusHotKeyErrorDescription {
+      let shortcutWarning = NSMenuItem(
+        title: "Global shortcut unavailable",
+        action: nil,
+        keyEquivalent: ""
+      )
+      shortcutWarning.isEnabled = false
+      shortcutWarning.toolTip = focusHotKeyErrorDescription
+      menu.addItem(shortcutWarning)
+    }
+
     menu.addItem(.separator())
     menu.addItem(strengthMenuItem())
     menu.addItem(paddingMenuItem())
