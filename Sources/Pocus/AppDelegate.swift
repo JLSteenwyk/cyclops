@@ -1,0 +1,177 @@
+import AppKit
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+  private let accessibility = AccessibilityService()
+  private let settings = PocusSettings()
+  private lazy var focusController = FocusController(
+    accessibility: accessibility,
+    settings: settings
+  )
+  private var statusItem: NSStatusItem!
+
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    statusItem.button?.image = NSImage(
+      systemSymbolName: "viewfinder",
+      accessibilityDescription: "Pocus"
+    )
+    statusItem.button?.toolTip = "Pocus — focus on the selected window"
+
+    let menu = NSMenu()
+    menu.delegate = self
+    statusItem.menu = menu
+    rebuildMenu()
+
+    focusController.onStateChange = { [weak self] in
+      self?.updateStatusIcon()
+    }
+    focusController.start()
+
+    if !accessibility.isTrusted {
+      accessibility.requestPermission()
+    }
+  }
+
+  func menuWillOpen(_ menu: NSMenu) {
+    rebuildMenu()
+  }
+
+  private func rebuildMenu() {
+    guard let menu = statusItem?.menu else { return }
+    menu.removeAllItems()
+
+    let title = NSMenuItem(title: "Pocus", action: nil, keyEquivalent: "")
+    title.isEnabled = false
+    menu.addItem(title)
+
+    if accessibility.isTrusted {
+      let toggleTitle = focusController.isPaused ? "Resume Focus" : "Pause Focus"
+      let toggleItem = NSMenuItem(
+        title: toggleTitle,
+        action: #selector(toggleFocus),
+        keyEquivalent: ""
+      )
+      toggleItem.target = self
+      menu.addItem(toggleItem)
+
+      let explanation = NSMenuItem(
+        title: "Following the selected window",
+        action: nil,
+        keyEquivalent: ""
+      )
+      explanation.isEnabled = false
+      menu.addItem(explanation)
+    } else {
+      let warning = NSMenuItem(
+        title: "Accessibility access is required",
+        action: nil,
+        keyEquivalent: ""
+      )
+      warning.isEnabled = false
+      menu.addItem(warning)
+
+      let permissionItem = NSMenuItem(
+        title: "Grant Accessibility Access…",
+        action: #selector(requestAccessibilityPermission),
+        keyEquivalent: ""
+      )
+      permissionItem.target = self
+      menu.addItem(permissionItem)
+    }
+
+    menu.addItem(.separator())
+    menu.addItem(strengthMenuItem())
+    menu.addItem(paddingMenuItem())
+    menu.addItem(.separator())
+
+    let settingsItem = NSMenuItem(
+      title: "Open Accessibility Settings…",
+      action: #selector(openAccessibilitySettings),
+      keyEquivalent: ""
+    )
+    settingsItem.target = self
+    menu.addItem(settingsItem)
+
+    let quitItem = NSMenuItem(
+      title: "Quit Pocus",
+      action: #selector(NSApplication.terminate(_:)),
+      keyEquivalent: "q"
+    )
+    menu.addItem(quitItem)
+  }
+
+  private func strengthMenuItem() -> NSMenuItem {
+    let parent = NSMenuItem(title: "Backdrop", action: nil, keyEquivalent: "")
+    let submenu = NSMenu(title: "Backdrop")
+
+    for strength in BackdropStrength.allCases {
+      let item = NSMenuItem(
+        title: strength.title,
+        action: #selector(selectStrength(_:)),
+        keyEquivalent: ""
+      )
+      item.target = self
+      item.representedObject = strength.rawValue
+      item.state = focusController.strength == strength ? .on : .off
+      submenu.addItem(item)
+    }
+
+    parent.submenu = submenu
+    return parent
+  }
+
+  private func paddingMenuItem() -> NSMenuItem {
+    let parent = NSMenuItem(title: "Focus Padding", action: nil, keyEquivalent: "")
+    let submenu = NSMenu(title: "Focus Padding")
+
+    for padding in [CGFloat(0), 6, 10, 18] {
+      let item = NSMenuItem(
+        title: padding == 0 ? "None" : "\(Int(padding)) pt",
+        action: #selector(selectPadding(_:)),
+        keyEquivalent: ""
+      )
+      item.target = self
+      item.representedObject = NSNumber(value: Double(padding))
+      item.state = focusController.padding == padding ? .on : .off
+      submenu.addItem(item)
+    }
+
+    parent.submenu = submenu
+    return parent
+  }
+
+  private func updateStatusIcon() {
+    statusItem.button?.appearsDisabled = focusController.isPaused
+  }
+
+  @objc private func toggleFocus() {
+    focusController.togglePaused()
+  }
+
+  @objc private func requestAccessibilityPermission() {
+    accessibility.requestPermission()
+  }
+
+  @objc private func openAccessibilitySettings() {
+    guard
+      let url = URL(
+        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+      )
+    else { return }
+    NSWorkspace.shared.open(url)
+  }
+
+  @objc private func selectStrength(_ sender: NSMenuItem) {
+    guard
+      let rawValue = sender.representedObject as? String,
+      let strength = BackdropStrength(rawValue: rawValue)
+    else { return }
+    focusController.setStrength(strength)
+  }
+
+  @objc private func selectPadding(_ sender: NSMenuItem) {
+    guard let value = sender.representedObject as? NSNumber else { return }
+    focusController.setPadding(CGFloat(value.doubleValue))
+  }
+}
