@@ -48,6 +48,8 @@ If no regular window is selected—for example, while the desktop is active—Po
 
 Pocus uses Sparkle for in-app updates. On the second launch, Sparkle asks whether it may check automatically. If enabled, it checks once per day and uses gentle reminders; it does not turn Pocus into a foreground Dock app just to announce an update.
 
+Its only network activity is requesting update metadata from the public appcast and downloading an update after the user approves it. Those requests never contain screen captures, window contents, window titles, or typed text.
+
 Choose **Check for Updates…** in the menu at any time. Pocus verifies the signed appcast and the update's EdDSA signature before extraction, then asks before installing and relaunching. Automatic installation is disabled.
 
 The production update feed must be hosted at a public HTTPS URL so installed copies can reach it without GitHub credentials. Until the release repository is configured, source builds intentionally use the non-routable `updates.invalid` placeholder and **Check for Updates…** will report that no feed is available.
