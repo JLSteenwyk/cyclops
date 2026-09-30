@@ -14,6 +14,7 @@ Cyclops is a small, native macOS menu-bar app that keeps your selected window cl
 
 - Follows the frontmost window automatically; it does not follow the pointer.
 - Handles Apple silicon and Intel Macs, multiple displays, windows that span displays, and full-screen Spaces.
+- Pins extra windows so they stay clear alongside the selected one with **Control–Option–Command–K** (`⌃⌥⌘K`).
 - Pauses or resumes from anywhere with **Control–Option–Command–P** (`⌃⌥⌘P`).
 - Offers backdrop strength and focus padding controls from the menu bar.
 - Passes every click through to the apps beneath the overlay.
@@ -29,7 +30,7 @@ Cyclops requires macOS 13 Ventura or newer.
 3. Launch Cyclops from Applications or Spotlight. Its cyclops-eye icon appears in the menu bar; Cyclops intentionally has no Dock icon or main window.
 4. When prompted, enable Cyclops in **System Settings → Privacy & Security → Accessibility**.
 
-Launch Cyclops from `/Applications` before granting access because macOS associates Accessibility approval with the installed app and its signature. Cyclops uses the permission only to read the focused window's position and size. It does not request Screen Recording access, inspect window contents, or monitor typed keys.
+Launch Cyclops from `/Applications` before granting access because macOS associates Accessibility approval with the installed app and its signature. Cyclops uses the permission only to read the positions and sizes of the focused window and any windows you pin. To tell whether a pinned window is visible in the current Space, it asks macOS which windows are on screen, reading only each window's owning app and bounds. It does not request Screen Recording access, inspect window contents, or monitor typed keys.
 
 The automated release workflow signs every executable and the DMG with Developer ID, submits the outer DMG so Apple notarizes it and its nested app, staples the accepted ticket to the DMG, and refuses to publish if any check fails.
 
@@ -40,7 +41,9 @@ The automated release workflow signs every executable and the DMG with Developer
 3. Select another window normally to move the clear area to that window.
 4. Click the cyclops eye in the menu bar to pause, resume, or adjust the effect.
 
-Press `⌃⌥⌘P` at any time to pause or resume Cyclops, even when another app is active. If another application already owns that shortcut, Cyclops keeps running and explains the conflict in the menu.
+To keep more than one window clear, select a window and press `⌃⌥⌘K` to pin it. Pinned windows stay clear while you select other windows; press `⌃⌥⌘K` on a pinned window to unpin it, or choose **Unpin All Windows** from the menu. A pinned window's clear area is hidden while that window is minimized, hidden, or on another Space, and the pin is dropped when the window closes. Pins last until you quit Cyclops.
+
+Press `⌃⌥⌘P` at any time to pause or resume Cyclops, even when another app is active. If another application already owns either shortcut, Cyclops keeps running and explains the conflict in the menu.
 
 If no regular window is selected—for example, while the desktop is active—Cyclops temporarily hides the backdrop.
 

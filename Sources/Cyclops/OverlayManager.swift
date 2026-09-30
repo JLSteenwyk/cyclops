@@ -10,7 +10,7 @@ final class OverlayManager {
   }
 
   func show(
-    focusedWindowFrame: CGRect,
+    focusRects: [CGRect],
     padding: CGFloat,
     strength: BackdropStrength
   ) {
@@ -20,7 +20,7 @@ final class OverlayManager {
 
     for panel in panels {
       panel.update(
-        globalFocusRect: focusedWindowFrame,
+        globalFocusRects: focusRects,
         padding: padding,
         strength: strength
       )

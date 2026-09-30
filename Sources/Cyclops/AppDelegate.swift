@@ -16,11 +16,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     updaterDelegate: nil,
     userDriverDelegate: self
   )
-  private lazy var focusHotKey = GlobalHotKey { [weak self] in
-    self?.handleGlobalFocusShortcut()
+  private lazy var focusHotKey = GlobalHotKey(shortcut: .pause) { [weak self] in
+    self?.performShortcutToggle(source: .carbon)
+  }
+  private lazy var pinHotKey = GlobalHotKey(shortcut: .pin) { [weak self] in
+    self?.performPinToggle(source: .carbon)
   }
   private var focusHotKeyErrorDescription: String?
+  private var pinHotKeyErrorDescription: String?
   private var shortcutDeduplicator = ShortcutDeliveryDeduplicator()
+  private var pinShortcutDeduplicator = ShortcutDeliveryDeduplicator()
   private var statusItem: NSStatusItem!
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,6 +44,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
       focusHotKeyErrorDescription = error.localizedDescription
       NSLog("Cyclops global shortcut unavailable: %@", error.localizedDescription)
     }
+    do {
+      try pinHotKey.register()
+    } catch {
+      pinHotKeyErrorDescription = error.localizedDescription
+      NSLog("Cyclops pin shortcut unavailable: %@", error.localizedDescription)
+    }
     rebuildMenu()
 
     focusController.start()
@@ -54,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
 
   func applicationWillTerminate(_ notification: Notification) {
     focusHotKey.unregister()
+    pinHotKey.unregister()
   }
 
   var supportsGentleScheduledUpdateReminders: Bool {
@@ -97,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
         keyEquivalent: ""
       )
       toggleItem.target = self
-      FocusShortcut.configure(menuItem: toggleItem)
+      GlobalShortcut.pause.configure(menuItem: toggleItem)
       toggleItem.toolTip = focusHotKeyErrorDescription
       menu.addItem(toggleItem)
 
@@ -108,6 +120,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
       )
       explanation.isEnabled = false
       menu.addItem(explanation)
+
+      menu.addItem(.separator())
+      let pinTitle =
+        focusController.isFocusedWindowPinned
+        ? "Unpin Selected Window" : "Pin Selected Window"
+      let pinItem = NSMenuItem(
+        title: pinTitle,
+        action: #selector(togglePin),
+        keyEquivalent: ""
+      )
+      pinItem.target = self
+      GlobalShortcut.pin.configure(menuItem: pinItem)
+      pinItem.toolTip = pinHotKeyErrorDescription
+      menu.addItem(pinItem)
+
+      let pinnedCount = focusController.pinnedCount
+      if pinnedCount > 0 {
+        let pinnedSummary = NSMenuItem(
+          title: pinnedCount == 1 ? "1 window pinned" : "\(pinnedCount) windows pinned",
+          action: nil,
+          keyEquivalent: ""
+        )
+        pinnedSummary.isEnabled = false
+        menu.addItem(pinnedSummary)
+      }
+
+      let unpinAllItem = NSMenuItem(
+        title: "Unpin All Windows",
+        action: pinnedCount > 0 ? #selector(unpinAll) : nil,
+        keyEquivalent: ""
+      )
+      unpinAllItem.target = self
+      menu.addItem(unpinAllItem)
     } else {
       let warning = NSMenuItem(
         title: "Accessibility access is required",
@@ -134,6 +179,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
       )
       shortcutWarning.isEnabled = false
       shortcutWarning.toolTip = focusHotKeyErrorDescription
+      menu.addItem(shortcutWarning)
+    }
+
+    if let pinHotKeyErrorDescription {
+      let shortcutWarning = NSMenuItem(
+        title: "Pin shortcut unavailable",
+        action: nil,
+        keyEquivalent: ""
+      )
+      shortcutWarning.isEnabled = false
+      shortcutWarning.toolTip = pinHotKeyErrorDescription
       menu.addItem(shortcutWarning)
     }
 
@@ -211,14 +267,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     performShortcutToggle(source: .appKit)
   }
 
-  private func handleGlobalFocusShortcut() {
-    performShortcutToggle(source: .carbon)
-  }
-
   private func performShortcutToggle(source: ShortcutDeliveryDeduplicator.Source) {
     let now = ProcessInfo.processInfo.systemUptime
     guard shortcutDeduplicator.shouldPerform(source: source, at: now) else { return }
     focusController.togglePaused()
+  }
+
+  @objc private func togglePin() {
+    performPinToggle(source: .appKit)
+  }
+
+  private func performPinToggle(source: ShortcutDeliveryDeduplicator.Source) {
+    let now = ProcessInfo.processInfo.systemUptime
+    guard pinShortcutDeduplicator.shouldPerform(source: source, at: now) else { return }
+    focusController.togglePinFocusedWindow()
+  }
+
+  @objc private func unpinAll() {
+    focusController.unpinAll()
   }
 
   @objc private func requestAccessibilityPermission() {

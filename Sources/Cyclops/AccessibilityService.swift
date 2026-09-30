@@ -1,10 +1,29 @@
 import AppKit
 import ApplicationServices
 
+struct TrackedWindow: Equatable {
+  let element: AXUIElement
+  let pid: pid_t
+}
+
+struct FocusedWindow {
+  let window: TrackedWindow
+  /// AppKit global coordinates.
+  let frame: CGRect
+}
+
 enum FocusLookupResult {
-  case window(CGRect)
+  case window(FocusedWindow)
   case cyclopsIsFrontmost
   case noWindow
+}
+
+enum PinnedWindowState: Equatable {
+  /// On screen in the current Space, in AppKit global coordinates.
+  case visible(CGRect)
+  /// Still open but minimized, hidden, or on another Space.
+  case hidden
+  case closed
 }
 
 struct AccessibilityService {
@@ -41,21 +60,60 @@ struct AccessibilityService {
 
     guard
       let window = elementAttribute(kAXFocusedWindowAttribute, from: application),
-      let position = pointAttribute(kAXPositionAttribute, from: window),
-      let size = sizeAttribute(kAXSizeAttribute, from: window),
-      size.width > 1,
-      size.height > 1
+      let accessibilityRect = accessibilityFrame(of: window),
+      accessibilityRect.width > 1,
+      accessibilityRect.height > 1
     else {
       return .noWindow
     }
 
-    let accessibilityRect = CGRect(origin: position, size: size)
-    let primaryScreenMaxY = NSScreen.screens.first?.frame.maxY ?? 0
     return .window(
-      CoordinateConverter.appKitRect(
-        fromAccessibilityRect: accessibilityRect,
-        primaryScreenMaxY: primaryScreenMaxY
+      FocusedWindow(
+        window: TrackedWindow(element: window, pid: focusedPID),
+        frame: appKitRect(fromAccessibilityRect: accessibilityRect)
       )
+    )
+  }
+
+  func state(
+    of window: TrackedWindow,
+    onScreenWindows: [OnScreenWindow]
+  ) -> PinnedWindowState {
+    var minimized: CFTypeRef?
+    let result = AXUIElementCopyAttributeValue(
+      window.element,
+      kAXMinimizedAttribute as CFString,
+      &minimized
+    )
+    // Only a destroyed element means the window closed; a busy app can fail other reads.
+    guard result != .invalidUIElement else { return .closed }
+
+    guard
+      (minimized as? Bool) != true,
+      let accessibilityRect = accessibilityFrame(of: window.element),
+      OnScreenWindow.isVisible(
+        pid: window.pid,
+        accessibilityFrame: accessibilityRect,
+        among: onScreenWindows
+      )
+    else {
+      return .hidden
+    }
+    return .visible(appKitRect(fromAccessibilityRect: accessibilityRect))
+  }
+
+  private func accessibilityFrame(of window: AXUIElement) -> CGRect? {
+    guard
+      let position = pointAttribute(kAXPositionAttribute, from: window),
+      let size = sizeAttribute(kAXSizeAttribute, from: window)
+    else { return nil }
+    return CGRect(origin: position, size: size)
+  }
+
+  private func appKitRect(fromAccessibilityRect rect: CGRect) -> CGRect {
+    CoordinateConverter.appKitRect(
+      fromAccessibilityRect: rect,
+      primaryScreenMaxY: NSScreen.screens.first?.frame.maxY ?? 0
     )
   }
 

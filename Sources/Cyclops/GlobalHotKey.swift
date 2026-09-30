@@ -1,14 +1,34 @@
 import AppKit
 import Carbon.HIToolbox
 
-enum FocusShortcut {
-  static let keyCode = UInt32(kVK_ANSI_P)
-  static let carbonModifiers = UInt32(controlKey | optionKey | cmdKey)
-  static let keyEquivalent = "p"
-  static let menuModifierMask: NSEvent.ModifierFlags = [.control, .option, .command]
+struct GlobalShortcut: Sendable {
+  let keyCode: UInt32
+  let carbonModifiers: UInt32
+  let keyEquivalent: String
+  let menuModifierMask: NSEvent.ModifierFlags
+  let identifier: UInt32
+  let displayName: String
+
+  static let pause = GlobalShortcut(
+    keyCode: UInt32(kVK_ANSI_P),
+    carbonModifiers: UInt32(controlKey | optionKey | cmdKey),
+    keyEquivalent: "p",
+    menuModifierMask: [.control, .option, .command],
+    identifier: 1,
+    displayName: "Control–Option–Command–P"
+  )
+
+  static let pin = GlobalShortcut(
+    keyCode: UInt32(kVK_ANSI_K),
+    carbonModifiers: UInt32(controlKey | optionKey | cmdKey),
+    keyEquivalent: "k",
+    menuModifierMask: [.control, .option, .command],
+    identifier: 2,
+    displayName: "Control–Option–Command–K"
+  )
 
   @MainActor
-  static func configure(menuItem: NSMenuItem) {
+  func configure(menuItem: NSMenuItem) {
     menuItem.keyEquivalent = keyEquivalent
     menuItem.keyEquivalentModifierMask = menuModifierMask
   }
@@ -16,14 +36,14 @@ enum FocusShortcut {
 
 enum GlobalHotKeyError: LocalizedError {
   case eventHandler(OSStatus)
-  case registration(OSStatus)
+  case registration(String, OSStatus)
 
   var errorDescription: String? {
     switch self {
     case .eventHandler(let status):
       "Could not install the global hotkey event handler (OSStatus \(status))."
-    case .registration(let status):
-      "Could not register Control–Option–Command–P; another app may already use it "
+    case .registration(let displayName, let status):
+      "Could not register \(displayName); another app may already use it "
         + "(OSStatus \(status))."
     }
   }
@@ -61,22 +81,38 @@ final class GlobalHotKey: @unchecked Sendable {
   typealias Action = @MainActor () -> Void
 
   private static let signature: OSType = 0x504F4353  // POCS
-  private static let identifier: UInt32 = 1
   private static let eventHandler: EventHandlerUPP = {
-    _, _, userData in
+    _, event, userData in
     guard let userData else { return OSStatus(eventNotHandledErr) }
     let hotKey = Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue()
+    guard let event else { return OSStatus(eventNotHandledErr) }
+    var pressedID = EventHotKeyID()
+    let status = GetEventParameter(
+      event,
+      EventParamName(kEventParamDirectObject),
+      EventParamType(typeEventHotKeyID),
+      nil,
+      MemoryLayout<EventHotKeyID>.size,
+      nil,
+      &pressedID
+    )
+    // Every registered hotkey receives each press, so ignore the other shortcuts' presses.
+    guard status == noErr, pressedID.id == hotKey.shortcut.identifier else {
+      return OSStatus(eventNotHandledErr)
+    }
     MainActor.assumeIsolated {
       hotKey.performAction()
     }
     return noErr
   }
 
+  let shortcut: GlobalShortcut
   private let action: Action
   private var eventHandlerReference: EventHandlerRef?
   private var hotKeyReference: EventHotKeyRef?
 
-  init(action: @escaping Action) {
+  init(shortcut: GlobalShortcut, action: @escaping Action) {
+    self.shortcut = shortcut
     self.action = action
   }
 
@@ -103,11 +139,11 @@ final class GlobalHotKey: @unchecked Sendable {
     var reference: EventHotKeyRef?
     let hotKeyID = EventHotKeyID(
       signature: Self.signature,
-      id: Self.identifier
+      id: shortcut.identifier
     )
     let registrationStatus = RegisterEventHotKey(
-      FocusShortcut.keyCode,
-      FocusShortcut.carbonModifiers,
+      shortcut.keyCode,
+      shortcut.carbonModifiers,
       hotKeyID,
       GetApplicationEventTarget(),
       0,
@@ -118,7 +154,7 @@ final class GlobalHotKey: @unchecked Sendable {
         RemoveEventHandler(eventHandlerReference)
       }
       eventHandlerReference = nil
-      throw GlobalHotKeyError.registration(registrationStatus)
+      throw GlobalHotKeyError.registration(shortcut.displayName, registrationStatus)
     }
     hotKeyReference = reference
   }

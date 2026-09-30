@@ -9,7 +9,7 @@ final class FocusOverlayView: NSView {
   private let maskLayer = CAShapeLayer()
   private let focusRingLayer = CAShapeLayer()
 
-  private var focusRect: CGRect?
+  private var focusRects: [CGRect] = []
   private var dimOpacity: CGFloat = BackdropStrength.balanced.dimOpacity
 
   override init(frame frameRect: NSRect) {
@@ -52,8 +52,8 @@ final class FocusOverlayView: NSView {
     updateMask(animated: false)
   }
 
-  func update(focusRect: CGRect?, strength: BackdropStrength, animated: Bool) {
-    self.focusRect = focusRect
+  func update(focusRects: [CGRect], strength: BackdropStrength, animated: Bool) {
+    self.focusRects = focusRects
     dimOpacity = strength.dimOpacity
     updateLayers()
     updateMask(animated: animated)
@@ -64,15 +64,7 @@ final class FocusOverlayView: NSView {
   }
 
   private func updateMask(animated: Bool) {
-    let maskPath = CGMutablePath()
-    maskPath.addRect(bounds)
-    if let focusRect {
-      maskPath.addRoundedRect(
-        in: focusRect,
-        cornerWidth: 10,
-        cornerHeight: 10
-      )
-    }
+    let maskPath = OverlayGeometry.maskPath(bounds: bounds, focusRects: focusRects)
 
     let oldPath = maskLayer.presentation()?.path ?? maskLayer.path
     CATransaction.begin()
@@ -82,14 +74,7 @@ final class FocusOverlayView: NSView {
     maskLayer.fillColor = NSColor.white.cgColor
     maskLayer.path = maskPath
     focusRingLayer.frame = bounds
-    focusRingLayer.path = focusRect.map {
-      CGPath(
-        roundedRect: $0,
-        cornerWidth: 10,
-        cornerHeight: 10,
-        transform: nil
-      )
-    }
+    focusRingLayer.path = OverlayGeometry.focusOutline(focusRects: focusRects)
     CATransaction.commit()
 
     guard animated, let oldPath else { return }

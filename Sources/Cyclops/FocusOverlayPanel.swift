@@ -5,7 +5,7 @@ final class FocusOverlayPanel {
   private let panel: NSPanel
   private let overlayView: FocusOverlayView
   private let screenFrame: CGRect
-  private var currentLocalFocusRect: CGRect?
+  private var currentLocalFocusRects: [CGRect] = []
 
   init(screen: NSScreen) {
     screenFrame = screen.frame
@@ -34,24 +34,24 @@ final class FocusOverlayPanel {
     panel.contentView = overlayView
   }
 
-  @discardableResult
   func update(
-    globalFocusRect: CGRect,
+    globalFocusRects: [CGRect],
     padding: CGFloat,
     strength: BackdropStrength
-  ) -> Bool {
-    let localFocusRect = OverlayGeometry.localFocusRect(
-      globalFocusRect: globalFocusRect,
+  ) {
+    let localFocusRects = OverlayGeometry.localFocusRects(
+      globalFocusRects: globalFocusRects,
       screenFrame: screenFrame,
       padding: padding
     )
 
-    let shouldAnimate =
-      currentLocalFocusRect != nil
-      && currentLocalFocusRect != localFocusRect
-    currentLocalFocusRect = localFocusRect
+    let shouldAnimate = OverlayGeometry.shouldAnimate(
+      from: currentLocalFocusRects,
+      to: localFocusRects
+    )
+    currentLocalFocusRects = localFocusRects
     overlayView.update(
-      focusRect: localFocusRect,
+      focusRects: localFocusRects,
       strength: strength,
       animated: shouldAnimate
     )
@@ -59,7 +59,6 @@ final class FocusOverlayPanel {
     if !panel.isVisible {
       panel.orderFrontRegardless()
     }
-    return localFocusRect != nil
   }
 
   func hide() {

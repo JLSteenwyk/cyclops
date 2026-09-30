@@ -8,7 +8,7 @@ struct GlobalHotKeyTests {
   @Test @MainActor
   func dispatchesTheRegisteredActionWithoutSynthesizingKeyboardInput() {
     var invocationCount = 0
-    let hotKey = GlobalHotKey {
+    let hotKey = GlobalHotKey(shortcut: .pause) {
       invocationCount += 1
     }
 
@@ -21,7 +21,7 @@ struct GlobalHotKeyTests {
   func configuresTheMenuEquivalentForTheGlobalShortcut() {
     let menuItem = NSMenuItem(title: "Pause Focus", action: nil, keyEquivalent: "")
 
-    FocusShortcut.configure(menuItem: menuItem)
+    GlobalShortcut.pause.configure(menuItem: menuItem)
 
     #expect(menuItem.keyEquivalent == "p")
     #expect(menuItem.keyEquivalentModifierMask == [.control, .option, .command])
@@ -29,8 +29,83 @@ struct GlobalHotKeyTests {
 
   @Test @MainActor
   func reportsAConflictWithoutCrashingWhenTheShortcutIsAlreadyRegistered() throws {
-    let first = GlobalHotKey {}
-    let conflicting = GlobalHotKey {}
+    let first = GlobalHotKey(shortcut: .pause) {}
+    let conflicting = GlobalHotKey(shortcut: .pause) {}
+    try first.register()
+    defer {
+      conflicting.unregister()
+      first.unregister()
+    }
+
+    #expect(throws: GlobalHotKeyError.self) {
+      try conflicting.register()
+    }
+  }
+
+  @Test @MainActor
+  func registersThePauseAndPinShortcutsSideBySide() throws {
+    let pause = GlobalHotKey(shortcut: .pause) {}
+    let pin = GlobalHotKey(shortcut: .pin) {}
+    defer {
+      pin.unregister()
+      pause.unregister()
+    }
+
+    try pause.register()
+    try pin.register()
+  }
+
+  @Test @MainActor
+  func deliversEachPressOnlyToItsOwnShortcut() throws {
+    var pauseCount = 0
+    var pinCount = 0
+    let pause = GlobalHotKey(shortcut: .pause) { pauseCount += 1 }
+    let pin = GlobalHotKey(shortcut: .pin) { pinCount += 1 }
+    try pause.register()
+    try pin.register()
+    defer {
+      pin.unregister()
+      pause.unregister()
+    }
+
+    try sendHotKeyPress(identifier: GlobalShortcut.pause.identifier)
+    #expect(pauseCount == 1)
+    #expect(pinCount == 0)
+
+    try sendHotKeyPress(identifier: GlobalShortcut.pin.identifier)
+    #expect(pauseCount == 1)
+    #expect(pinCount == 1)
+  }
+
+  @MainActor
+  private func sendHotKeyPress(identifier: UInt32) throws {
+    var event: EventRef?
+    let createStatus = CreateEvent(
+      nil,
+      OSType(kEventClassKeyboard),
+      UInt32(kEventHotKeyPressed),
+      0,
+      EventAttributes(kEventAttributeNone),
+      &event
+    )
+    let hotKeyEvent = try #require(createStatus == noErr ? event : nil)
+    defer { ReleaseEvent(hotKeyEvent) }
+
+    var hotKeyID = EventHotKeyID(signature: 0x504F_4353, id: identifier)
+    SetEventParameter(
+      hotKeyEvent,
+      EventParamName(kEventParamDirectObject),
+      EventParamType(typeEventHotKeyID),
+      MemoryLayout<EventHotKeyID>.size,
+      &hotKeyID
+    )
+    SendEventToEventTarget(hotKeyEvent, GetApplicationEventTarget())
+  }
+
+  @Test @MainActor
+  func reportsAConflictForTheSecondPinRegistration() throws {
+    let first = GlobalHotKey(shortcut: .pin) {}
+    let conflicting = GlobalHotKey(shortcut: .pin) {}
     try first.register()
     defer {
       conflicting.unregister()
@@ -71,7 +146,14 @@ struct GlobalHotKeyTests {
 
   @Test
   func usesTheDocumentedCarbonShortcut() {
-    #expect(FocusShortcut.keyCode == UInt32(kVK_ANSI_P))
-    #expect(FocusShortcut.carbonModifiers == UInt32(controlKey | optionKey | cmdKey))
+    #expect(GlobalShortcut.pause.keyCode == UInt32(kVK_ANSI_P))
+    #expect(GlobalShortcut.pause.carbonModifiers == UInt32(controlKey | optionKey | cmdKey))
+  }
+
+  @Test
+  func usesControlOptionCommandKToPin() {
+    #expect(GlobalShortcut.pin.keyCode == UInt32(kVK_ANSI_K))
+    #expect(GlobalShortcut.pin.carbonModifiers == UInt32(controlKey | optionKey | cmdKey))
+    #expect(GlobalShortcut.pin.keyEquivalent == "k")
   }
 }
